@@ -7,16 +7,19 @@
 ## 实验模块
 
 ### 1. C2f (原始版本)
+
 - **配置文件**: `ultralytics/cfg/models/v8/yolov8.yaml`
 - **训练脚本**: 已有的 `examples/phone_detection/train_simsppf.py` (使用原始 C2f)
 - **特点**: 基础的 CSP 瓶颈结构，无注意力机制
 
 ### 2. C2fSE (融入 SE 注意力机制)
+
 - **配置文件**: `ultralytics/cfg/models/v8/yolov8-c2fse.yaml`
 - **训练脚本**: `examples/phone_detection/train_c2fse.py`
 - **特点**: 在 C2f 的 Bottleneck 输出端添加 SE 注意力，自适应校准通道特征
 
 ### 3. C2fPSA (融入 PSA 注意力机制)
+
 - **配置文件**: `ultralytics/cfg/models/v8/yolov8-c2fpsa.yaml`
 - **训练脚本**: `examples/phone_detection/train_c2fpsa.py`
 - **特点**: 使用 PSA 注意力机制，增强空间特征选择能力
@@ -50,51 +53,56 @@ D:\anaconda\envs\yolov8_new\python.exe examples\phone_detection\compare_c2f_vari
 
 将对比结果填入下表：
 
-| 模块 | P (%) | R (%) | mAP@0.5 (%) | mAP@0.5:0.95 (%) |
-|------|-------|-------|-------------|------------------|
-| C2f (原始版本) | [待填写] | [待填写] | [待填写] | [待填写] |
-| C2fSE (SE 注意力) | [待填写] | [待填写] | [待填写] | [待填写] |
-| C2fPSA (PSA 注意力) | [待填写] | [待填写] | [待填写] | [待填写] |
-| 自主添加 | [待填写] | [待填写] | [待填写] | [待填写] |
+| 模块                | P (%)    | R (%)    | mAP@0.5 (%) | mAP@0.5:0.95 (%) |
+| ------------------- | -------- | -------- | ----------- | ---------------- |
+| C2f (原始版本)      | [待填写] | [待填写] | [待填写]    | [待填写]         |
+| C2fSE (SE 注意力)   | [待填写] | [待填写] | [待填写]    | [待填写]         |
+| C2fPSA (PSA 注意力) | [待填写] | [待填写] | [待填写]    | [待填写]         |
+| 自主添加            | [待填写] | [待填写] | [待填写]    | [待填写]         |
 
 ## 进阶实验：探索不同替换位置
 
 由于 C2f 模块在主干网络中多次使用，你可以尝试以下实验：
 
 ### 方案 1: 仅替换浅层 C2f
+
 修改配置文件，只替换 P3/8 层的 C2f：
+
 ```yaml
 backbone:
-  - [-1, 3, C2fSE, [128, True]]  # 仅第 2 层使用 C2fSE
-  - [-1, 6, C2f, [256, True]]    # 其他层使用原始 C2f
+  - [-1, 3, C2fSE, [128, True]] # 仅第 2 层使用 C2fSE
+  - [-1, 6, C2f, [256, True]] # 其他层使用原始 C2f
   - [-1, 6, C2f, [512, True]]
   - [-1, 3, C2f, [1024, True]]
 ```
 
 ### 方案 2: 仅替换深层 C2f
+
 ```yaml
 backbone:
-  - [-1, 3, C2f, [128, True]]    # 浅层使用原始 C2f
+  - [-1, 3, C2f, [128, True]] # 浅层使用原始 C2f
   - [-1, 6, C2f, [256, True]]
-  - [-1, 6, C2fSE, [512, True]]  # P4/16 使用 C2fSE
+  - [-1, 6, C2fSE, [512, True]] # P4/16 使用 C2fSE
   - [-1, 3, C2fSE, [1024, True]] # P5/32 使用 C2fSE
 ```
 
 ### 方案 3: 仅替换中间层
+
 ```yaml
 backbone:
   - [-1, 3, C2f, [128, True]]
-  - [-1, 6, C2fSE, [256, True]]  # 仅 P3/8 使用 C2fSE
+  - [-1, 6, C2fSE, [256, True]] # 仅 P3/8 使用 C2fSE
   - [-1, 6, C2f, [512, True]]
   - [-1, 3, C2f, [1024, True]]
 ```
 
 ### 方案 4: 混合使用不同注意力
+
 ```yaml
 backbone:
-  - [-1, 3, C2fSE, [128, True]]   # 浅层用 SE
-  - [-1, 6, C2fPSA, [256, True]]  # 中层用 PSA
-  - [-1, 6, C2fSE, [512, True]]   # 深层用 SE
+  - [-1, 3, C2fSE, [128, True]] # 浅层用 SE
+  - [-1, 6, C2fPSA, [256, True]] # 中层用 PSA
+  - [-1, 6, C2fSE, [512, True]] # 深层用 SE
   - [-1, 3, C2fPSA, [1024, True]] # 最深用 PSA
 ```
 

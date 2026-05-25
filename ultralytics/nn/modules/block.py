@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 print("block.py loaded", flush=True)
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Block modules."""
@@ -23,12 +24,10 @@ __all__ = (
     "DFL",
     "ELAN1",
     "PSA",
+    "SE",
     "SPP",
     "SPPELAN",
     "SPPF",
-    "SimSPPF",
-    "SE",
-    "C2fSE",
     "AConv",
     "ADown",
     "Attention",
@@ -39,6 +38,7 @@ __all__ = (
     "C2fAttn",
     "C2fCIB",
     "C2fPSA",
+    "C2fSE",
     "C3Ghost",
     "C3k2",
     "C3x",
@@ -55,6 +55,7 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
+    "SimSPPF",
     "TorchVision",
 )
 
@@ -244,8 +245,7 @@ class SPPF(nn.Module):
 class SimSPPF(nn.Module):
     """Simplified Spatial Pyramid Pooling - Fast (SimSPPF) layer for efficient feature extraction.
 
-    SimSPPF 使用更简单的池化策略，减少计算量同时保持性能。
-    相比传统 SPPF，SimSPPF 优化了特征融合方式。
+    SimSPPF 使用更简单的池化策略，减少计算量同时保持性能。 相比传统 SPPF，SimSPPF 优化了特征融合方式。
     """
 
     def __init__(self, c1: int, c2: int, k: int = 5, n: int = 3, shortcut: bool = True):
@@ -359,8 +359,7 @@ class C2f(nn.Module):
 class SE(nn.Module):
     """Squeeze-and-Excitation (SE) attention module.
 
-    SE 注意力机制通过全局平均池化和全连接层学习通道权重，
-    自适应地重新校准通道特征响应。
+    SE 注意力机制通过全局平均池化和全连接层学习通道权重， 自适应地重新校准通道特征响应。
     """
 
     def __init__(self, c1: int, r: int = 16):
@@ -373,10 +372,7 @@ class SE(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(c1, c1 // r, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(c1 // r, c1, bias=False),
-            nn.Sigmoid()
+            nn.Linear(c1, c1 // r, bias=False), nn.ReLU(inplace=True), nn.Linear(c1 // r, c1, bias=False), nn.Sigmoid()
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -1515,8 +1511,8 @@ class PSA(nn.Module):
             e (float): Expansion ratio.
         """
         super().__init__()
-        print(f'C2fPSA Debug: c1={c1}, c2={c2}, args={args}', flush=True)
-        raise RuntimeError(f'C2fPSA Debug: c1={c1}, c2={c2}, args={args}')
+        print(f"C2fPSA Debug: c1={c1}, c2={c2}, args={args}", flush=True)
+        raise RuntimeError(f"C2fPSA Debug: c1={c1}, c2={c2}, args={args}")
         assert c1 == c2
         self.c = int(c1 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
