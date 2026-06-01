@@ -4,6 +4,7 @@ print("block.py loaded", flush=True)
 """Block modules."""
 
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -29,6 +30,10 @@ __all__ = (
     "SimSPPF",
     "SE",
     "C2fSE",
+    "CBAM",
+    "C2fCBAM",
+    "ECA",
+    "C2fECA",
     "AConv",
     "ADown",
     "Attention",
@@ -421,6 +426,160 @@ class C2fSE(C2f):
         """Forward pass through C2fSE layer with SE attention."""
         y = list(self.cv1(x).chunk(2, 1))
         y.extend(self.se(m(y[-1])) for m in self.m)  # 对每个 Bottleneck 输出应用 SE
+        return self.cv2(torch.cat(y, 1))
+
+
+class CBAM(nn.Module):
+    """Convolutional Block Attention Module (CBAM).
+
+    CBAM 通过 sequentially 应用通道注意力和空间注意力来增强特征表示。
+    通道注意力关注"什么"是重要的，空间注意力关注"哪里"是重要的。
+
+    References:
+        https://arxiv.org/abs/1807.06521
+    """
+
+    def __init__(self, c1: int, r: int = 16):
+        """Initialize CBAM module.
+
+        Args:
+            c1 (int): Input channels.
+            r (int): Reduction ratio for channel attention.
+        """
+        super().__init__()
+        # Channel Attention
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(c1, c1 // r, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(c1 // r, c1, bias=False)
+        )
+        self.sigmoid = nn.Sigmoid()
+        
+        # Spatial Attention
+        self.conv = Conv(2, 1, k=7, p=3, act=False)  # 7x7 convolution
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply CBAM attention to input tensor."""
+        b, c, _, _ = x.size()
+        
+        # Channel Attention
+        avg_out = self.fc(self.avg_pool(x).view(b, c)).view(b, c, 1, 1)
+        max_out = self.fc(self.max_pool(x).view(b, c)).view(b, c, 1, 1)
+        channel_att = self.sigmoid(avg_out + max_out)
+        x = x * channel_att
+        
+        # Spatial Attention
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        spatial_att = torch.cat([avg_out, max_out], dim=1)
+        spatial_att = self.sigmoid(self.conv(spatial_att))
+        x = x * spatial_att
+        
+        return x
+
+
+class C2fCBAM(C2f):
+    """C2f module with CBAM attention.
+
+    在 C2f 的基础上融入 CBAM 注意力机制，同时增强通道和空间特征表达能力。
+    """
+
+    def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
+        """Initialize C2fCBAM module.
+
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            n (int): Number of Bottleneck blocks.
+            shortcut (bool): Whether to use shortcut connections.
+            g (int): Groups for convolutions.
+            e (float): Expansion ratio.
+        """
+        self.c = max(int(c2 * e), 1)
+        c2 = max(c2, 1)
+        nn.Module.__init__(self)
+        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = Conv(max((2 + n) * self.c, 1), c2, 1)
+        self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+        self.cbam = CBAM(self.c)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through C2fCBAM layer with CBAM attention."""
+        y = list(self.cv1(x).chunk(2, 1))
+        y.extend(self.cbam(m(y[-1])) for m in self.m)
+        return self.cv2(torch.cat(y, 1))
+
+
+class ECA(nn.Module):
+    """Efficient Channel Attention (ECA).
+
+    ECA 通过避免降维和升维操作，使用一维卷积高效地捕获通道间关系。
+
+    References:
+        https://arxiv.org/abs/1910.03151
+    """
+
+    def __init__(self, c1: int, gamma: int = 2, b: int = 1):
+        """Initialize ECA module.
+
+        Args:
+            c1 (int): Input channels.
+            gamma (int): Gamma parameter for kernel size calculation.
+            b (int): Beta parameter for kernel size calculation.
+        """
+        super().__init__()
+        # 自适应选择一维卷积的 kernel size
+        k = max(int(abs((math.log(c1, 2) + b) / gamma)), 3)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=k // 2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply ECA attention to input tensor."""
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, 1, c)
+        y = self.conv(y)
+        # 确保输出尺寸正确，只取中间部分
+        if y.size(-1) > c:
+            # 如果输出比输入长，裁剪到正确尺寸
+            pad = (y.size(-1) - c) // 2
+            y = y[:, :, pad:pad + c] if pad > 0 else y[:, :, :c]
+        y = y.view(b, c, 1, 1)
+        y = self.sigmoid(y)
+        return x * y
+
+
+class C2fECA(C2f):
+    """C2f module with ECA attention.
+
+    在 C2f 的基础上融入 ECA 注意力机制，高效地增强通道特征表达能力。
+    """
+
+    def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
+        """Initialize C2fECA module.
+
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            n (int): Number of Bottleneck blocks.
+            shortcut (bool): Whether to use shortcut connections.
+            g (int): Groups for convolutions.
+            e (float): Expansion ratio.
+        """
+        self.c = max(int(c2 * e), 1)
+        c2 = max(c2, 1)
+        nn.Module.__init__(self)
+        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = Conv(max((2 + n) * self.c, 1), c2, 1)
+        self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+        self.eca = ECA(self.c)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through C2fECA layer with ECA attention."""
+        y = list(self.cv1(x).chunk(2, 1))
+        y.extend(self.eca(m(y[-1])) for m in self.m)
         return self.cv2(torch.cat(y, 1))
 
 
