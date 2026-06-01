@@ -25,13 +25,6 @@ from ultralytics.nn.modules import (
     SPP,
     SPPELAN,
     SPPF,
-    SimSPPF,
-    SE,
-    C2fSE,
-    CBAM,
-    C2fCBAM,
-    ECA,
-    C2fECA,
     A2C2f,
     AConv,
     ADown,
@@ -39,8 +32,11 @@ from ultralytics.nn.modules import (
     BottleneckCSP,
     C2f,
     C2fAttn,
+    C2fCBAM,
     C2fCIB,
+    C2fECA,
     C2fPSA,
+    C2fSE,
     C3Ghost,
     C3k2,
     C3x,
@@ -57,7 +53,6 @@ from ultralytics.nn.modules import (
     Focus,
     GhostBottleneck,
     GhostConv,
-    LightConv,
     HGBlock,
     HGStem,
     ImagePoolingAttn,
@@ -74,6 +69,7 @@ from ultralytics.nn.modules import (
     SCDown,
     Segment,
     Segment26,
+    SimSPPF,
     TorchVision,
     WorldDetect,
     YOLOEDetect,
@@ -520,7 +516,7 @@ class DetectionModel(BaseModel):
     def init_criterion(self):
         """Initialize the loss criterion for the DetectionModel."""
         # 从模型的 args 中获取 iou_type 参数，默认为 SIoU
-        iou_type = getattr(self.args, 'iou_type', 'SIoU') if hasattr(self, 'args') else 'SIoU'
+        iou_type = getattr(self.args, "iou_type", "SIoU") if hasattr(self, "args") else "SIoU"
         return E2ELoss(self) if getattr(self, "end2end", False) else v8DetectionLoss(self, iou_type=iou_type)
 
 

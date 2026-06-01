@@ -37,7 +37,7 @@ class TaskAlignedAssigner(nn.Module):
         stride: list = [8, 16, 32],
         eps: float = 1e-9,
         topk2=None,
-        iou_type: str = 'SIoU',
+        iou_type: str = "SIoU",
     ):
         """Initialize a TaskAlignedAssigner object with customizable hyperparameters.
 
@@ -216,11 +216,11 @@ class TaskAlignedAssigner(nn.Module):
             (torch.Tensor): IoU values between each pair of boxes.
         """
         # 根据配置的 IoU 类型计算
-        if self.iou_type == 'GIoU':
+        if self.iou_type == "GIoU":
             return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, GIoU=True).squeeze(-1).clamp_(0)
-        elif self.iou_type == 'DIoU':
+        elif self.iou_type == "DIoU":
             return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, DIoU=True).squeeze(-1).clamp_(0)
-        elif self.iou_type == 'CIoU':
+        elif self.iou_type == "CIoU":
             return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, CIoU=True).squeeze(-1).clamp_(0)
         else:  # 默认 SIoU
             return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, SIoU=True).squeeze(-1).clamp_(0)

@@ -4,7 +4,7 @@
 # 该配置使用 SimSPPF 替换 SPPF，并在最后一层使用 C2fSE
 
 # Parameters
-nc: 1  # number of classes (手机检测)
+nc: 1 # number of classes (手机检测)
 scales:
   n: [0.33, 0.25, 1024]
   s: [0.33, 0.50, 1024]

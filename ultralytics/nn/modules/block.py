@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 print("block.py loaded", flush=True)
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Block modules."""
 
 
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,20 +22,16 @@ __all__ = (
     "C2PSA",
     "C3",
     "C3TR",
+    "CBAM",
     "CIB",
     "DFL",
+    "ECA",
     "ELAN1",
     "PSA",
+    "SE",
     "SPP",
     "SPPELAN",
     "SPPF",
-    "SimSPPF",
-    "SE",
-    "C2fSE",
-    "CBAM",
-    "C2fCBAM",
-    "ECA",
-    "C2fECA",
     "AConv",
     "ADown",
     "Attention",
@@ -42,8 +40,11 @@ __all__ = (
     "BottleneckCSP",
     "C2f",
     "C2fAttn",
+    "C2fCBAM",
     "C2fCIB",
+    "C2fECA",
     "C2fPSA",
+    "C2fSE",
     "C3Ghost",
     "C3k2",
     "C3x",
@@ -60,6 +61,7 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
+    "SimSPPF",
     "TorchVision",
 )
 
@@ -249,8 +251,7 @@ class SPPF(nn.Module):
 class SimSPPF(nn.Module):
     """Simplified Spatial Pyramid Pooling - Fast (SimSPPF) layer for efficient feature extraction.
 
-    SimSPPF 使用更简单的池化策略，减少计算量同时保持性能。
-    相比传统 SPPF，SimSPPF 优化了特征融合方式。
+    SimSPPF 使用更简单的池化策略，减少计算量同时保持性能。 相比传统 SPPF，SimSPPF 优化了特征融合方式。
     """
 
     def __init__(self, c1: int, c2: int, k: int = 5, n: int = 3, shortcut: bool = True):
@@ -364,8 +365,7 @@ class C2f(nn.Module):
 class SE(nn.Module):
     """Squeeze-and-Excitation (SE) attention module.
 
-    SE 注意力机制通过全局平均池化和全连接层学习通道权重，
-    自适应地重新校准通道特征响应。
+    SE 注意力机制通过全局平均池化和全连接层学习通道权重， 自适应地重新校准通道特征响应。
     """
 
     def __init__(self, c1: int, r: int = 16):
@@ -378,10 +378,7 @@ class SE(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(c1, c1 // r, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(c1 // r, c1, bias=False),
-            nn.Sigmoid()
+            nn.Linear(c1, c1 // r, bias=False), nn.ReLU(inplace=True), nn.Linear(c1 // r, c1, bias=False), nn.Sigmoid()
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -432,8 +429,7 @@ class C2fSE(C2f):
 class CBAM(nn.Module):
     """Convolutional Block Attention Module (CBAM).
 
-    CBAM 通过 sequentially 应用通道注意力和空间注意力来增强特征表示。
-    通道注意力关注"什么"是重要的，空间注意力关注"哪里"是重要的。
+    CBAM 通过 sequentially 应用通道注意力和空间注意力来增强特征表示。 通道注意力关注"什么"是重要的，空间注意力关注"哪里"是重要的。
 
     References:
         https://arxiv.org/abs/1807.06521
@@ -451,32 +447,30 @@ class CBAM(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(c1, c1 // r, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(c1 // r, c1, bias=False)
+            nn.Linear(c1, c1 // r, bias=False), nn.ReLU(inplace=True), nn.Linear(c1 // r, c1, bias=False)
         )
         self.sigmoid = nn.Sigmoid()
-        
+
         # Spatial Attention
         self.conv = Conv(2, 1, k=7, p=3, act=False)  # 7x7 convolution
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply CBAM attention to input tensor."""
         b, c, _, _ = x.size()
-        
+
         # Channel Attention
         avg_out = self.fc(self.avg_pool(x).view(b, c)).view(b, c, 1, 1)
         max_out = self.fc(self.max_pool(x).view(b, c)).view(b, c, 1, 1)
         channel_att = self.sigmoid(avg_out + max_out)
         x = x * channel_att
-        
+
         # Spatial Attention
         avg_out = torch.mean(x, dim=1, keepdim=True)
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         spatial_att = torch.cat([avg_out, max_out], dim=1)
         spatial_att = self.sigmoid(self.conv(spatial_att))
         x = x * spatial_att
-        
+
         return x
 
 
@@ -545,7 +539,7 @@ class ECA(nn.Module):
         if y.size(-1) > c:
             # 如果输出比输入长，裁剪到正确尺寸
             pad = (y.size(-1) - c) // 2
-            y = y[:, :, pad:pad + c] if pad > 0 else y[:, :, :c]
+            y = y[:, :, pad : pad + c] if pad > 0 else y[:, :, :c]
         y = y.view(b, c, 1, 1)
         y = self.sigmoid(y)
         return x * y
@@ -1674,8 +1668,8 @@ class PSA(nn.Module):
             e (float): Expansion ratio.
         """
         super().__init__()
-        print(f'C2fPSA Debug: c1={c1}, c2={c2}, args={args}', flush=True)
-        raise RuntimeError(f'C2fPSA Debug: c1={c1}, c2={c2}, args={args}')
+        print(f"C2fPSA Debug: c1={c1}, c2={c2}, args={args}", flush=True)
+        raise RuntimeError(f"C2fPSA Debug: c1={c1}, c2={c2}, args={args}")
         assert c1 == c2
         self.c = int(c1 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)

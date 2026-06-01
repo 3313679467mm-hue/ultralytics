@@ -130,13 +130,13 @@ def bbox_iou(
 
     # IoU
     iou = inter / union
-    
+
     if SIoU:
         cw = b1_x2.maximum(b2_x2) - b1_x1.minimum(b2_x1)
         ch = b1_y2.maximum(b2_y2) - b1_y1.minimum(b2_y1)
         s_cw = (b2_x1 + b2_x2 - b1_x1 - b1_x2) * 0.5 + eps
         s_ch = (b2_y1 + b2_y2 - b1_y1 - b1_y2) * 0.5 + eps
-        sigma = torch.pow(s_cw ** 2 + s_ch ** 2, 0.5)
+        sigma = torch.pow(s_cw**2 + s_ch**2, 0.5)
         sin_alpha_1 = torch.abs(s_cw) / sigma
         sin_alpha_2 = torch.abs(s_ch) / sigma
         threshold = pow(2, 0.5) / 2
@@ -150,7 +150,7 @@ def bbox_iou(
         omiga_h = torch.abs(h1 - h2) / torch.max(h1, h2)
         shape_cost = torch.pow(1 - torch.exp(-1 * omiga_w), 4) + torch.pow(1 - torch.exp(-1 * omiga_h), 4)
         return iou - torch.pow(0.5 * (distance_cost + shape_cost) + eps, 1)
-    
+
     if CIoU or DIoU or GIoU:
         cw = b1_x2.maximum(b2_x2) - b1_x1.minimum(b2_x1)  # convex (smallest enclosing box) width
         ch = b1_y2.maximum(b2_y2) - b1_y1.minimum(b2_y1)  # convex height

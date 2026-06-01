@@ -3,22 +3,24 @@ import sys
 
 # 添加项目根目录到 Python 路径，使用本地 ultralytics 代码
 script_dir = os.path.dirname(__file__)
-project_root = os.path.join(script_dir, '..', '..')
+project_root = os.path.join(script_dir, "..", "..")
 sys.path.insert(0, project_root)
 
 from ultralytics import YOLO
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 获取脚本所在目录
     script_dir = os.path.dirname(__file__)
-    data_path = os.path.join(script_dir, '..', '..', 'datasets', 'phone_detection', 'data.yaml')
-    
+    data_path = os.path.join(script_dir, "..", "..", "datasets", "phone_detection", "data.yaml")
+
     # 使用 C3Ghost 配置
-    model_yaml_path = os.path.join(script_dir, '..', '..', 'ultralytics', 'cfg', 'models', 'v8', 'yolov8-c3ghost-phone.yaml')
-    
+    model_yaml_path = os.path.join(
+        script_dir, "..", "..", "ultralytics", "cfg", "models", "v8", "yolov8-c3ghost-phone.yaml"
+    )
+
     # 使用相同的预训练权重（保证公平对比）
-    weights_path = os.path.join(script_dir, '..', '..', 'weights', 'best_modified.pt')
-    
+    weights_path = os.path.join(script_dir, "..", "..", "weights", "best_modified.pt")
+
     print("=" * 60)
     print("C3Ghost 轻量化模块测试")
     print("=" * 60)
@@ -26,11 +28,11 @@ if __name__ == '__main__':
     print(f"预训练权重：{weights_path}")
     print(f"数据集：{data_path}")
     print("=" * 60)
-    
+
     # 创建模型并加载权重
     model = YOLO(model_yaml_path)
     model.load(weights_path)
-    
+
     # 开始训练
     print("\n开始训练 C3Ghost 模型...")
     results = model.train(
@@ -58,8 +60,8 @@ if __name__ == '__main__':
         dfl=1.5,
         # 其他参数
         dropout=0.0,
-        name='phone_detection_c3ghost',
-        project='examples/phone_detection/runs',
-        resume=False
+        name="phone_detection_c3ghost",
+        project="examples/phone_detection/runs",
+        resume=False,
     )
-    print('训练完成!')
+    print("训练完成!")

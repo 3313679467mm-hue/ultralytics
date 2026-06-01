@@ -3,37 +3,37 @@ import sys
 
 # 添加项目根目录到 Python 路径，使用本地 ultralytics 代码
 script_dir = os.path.dirname(__file__)
-project_root = os.path.join(script_dir, '..', '..')
+project_root = os.path.join(script_dir, "..", "..")
 sys.path.insert(0, project_root)
 
 from ultralytics import YOLO
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 获取脚本所在目录
     script_dir = os.path.dirname(__file__)
-    data_path = os.path.join(script_dir, '..', '..', 'datasets', 'phone_detection', 'data.yaml')
-    
+    data_path = os.path.join(script_dir, "..", "..", "datasets", "phone_detection", "data.yaml")
+
     # 实验2配置文件路径（SimSPPF + SIoU）
-    model_yaml_path = os.path.join(script_dir, '..', '..', 'ultralytics', 'cfg', 'models', 'v8', 'yolov8-simsppf.yaml')
-    
+    model_yaml_path = os.path.join(script_dir, "..", "..", "ultralytics", "cfg", "models", "v8", "yolov8-simsppf.yaml")
+
     # 使用相同的预训练权重（保证公平对比）
-    weights_path = os.path.join(script_dir, '..', '..', 'weights', 'best_modified.pt')
-    
+    weights_path = os.path.join(script_dir, "..", "..", "weights", "best_modified.pt")
+
     print("=" * 60)
     print("消融实验2 - SimSPPF + SIoU 损失函数")
     print("=" * 60)
     print(f"配置文件：{model_yaml_path}")
     print(f"预训练权重：{weights_path}")
-    print(f"数据集：{data_path}") 
+    print(f"数据集：{data_path}")
     print("=" * 60)
-    
+
     # 创建模型并加载权重
     model = YOLO(model_yaml_path)
     model.load(weights_path)
-    
+
     # 设置 IoU 类型参数
-    model.args['iou_type'] = 'SIoU'
-    
+    model.args["iou_type"] = "SIoU"
+
     # 开始训练
     print("\n开始训练实验2模型（SimSPPF + SIoU）...")
     results = model.train(
@@ -61,8 +61,8 @@ if __name__ == '__main__':
         dfl=1.5,
         # 其他参数
         dropout=0.0,
-        name='ablation_experiment2_simsppf_siou',
-        project='examples/phone_detection/runs',
-        resume=False
+        name="ablation_experiment2_simsppf_siou",
+        project="examples/phone_detection/runs",
+        resume=False,
     )
-    print('训练完成!')
+    print("训练完成!")
