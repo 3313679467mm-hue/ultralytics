@@ -5,8 +5,7 @@ from ultralytics import YOLO
 
 class PhoneDetector:
     def __init__(self, model_path="runs/detect/phone_detection4/weights/best.pt"):
-        """初始化手机检测器 1 参数: model_path: 训练好的模型路径.
-        """
+        """初始化手机检测器 1 参数: model_path: 训练好的模型路径."""
         print(f"正在加载模型: {model_path}")
         self.model = YOLO(model_path)
         self.classes = self.model.names
