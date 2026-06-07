@@ -2,7 +2,7 @@
 # YOLOv8-phone-final: 终极冠军手机检测模型 (SimSPPF + SIoU + C2fCBAM + C2fLightConv)
 
 # Parameters
-nc: 80  # 手机检测任务类别数
+nc: 80 # 手机检测任务类别数
 scales: # YOLOv8n 尺度微调基准
   # [depth, width, max_channels]
   n: [0.33, 0.25, 1024]
@@ -14,33 +14,33 @@ scales: # YOLOv8n 尺度微调基准
 # YOLOv8 终极改进 Backbone
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]]      # 0-P1/2 (浅层保持标准 Conv 提取边缘)
-  - [-1, 1, Conv, [128, 3, 2]]     # 1-P2/4
-  - [-1, 3, C2f, [128, True]]      # 2-P2/4 (浅层保持标准 C2f)
-  - [-1, 1, Conv, [256, 3, 2]]     # 3-P3/8
+  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2 (浅层保持标准 Conv 提取边缘)
+  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+  - [-1, 3, C2f, [128, True]] # 2-P2/4 (浅层保持标准 C2f)
+  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
   - [-1, 6, C2fLightConv, [256, True]] # 4-P3/8 (中间深层开始引入 LightConv 减参)
-  - [-1, 1, Conv, [512, 3, 2]]     # 5-P4/16
+  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
   - [-1, 6, C2fLightConv, [512, True]] # 6-P4/16 (深层继续使用 LightConv)
-  - [-1, 1, Conv, [1024, 3, 2]]    # 7-P5/32
+  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
   - [-1, 3, C2fCBAM, [1024, True]] # 8-P5/32 (Backbone 最深层加入 CBAM 提振大感受野精度)
-  - [-1, 1, SimSPPF, [1024, 5]]    # 9-金字塔改用高效的 SimSPPF
+  - [-1, 1, SimSPPF, [1024, 5]] # 9-金字塔改用高效的 SimSPPF
 
 # YOLOv8 终极改进 Neck (全面轻量化)
 head:
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 6], 1, Concat, [1]]      # 融合 backbone P4
-  - [-1, 3, C2fLightConv, [512]]   # 12 (Neck层使用 C2fLightConv)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 6], 1, Concat, [1]] # 融合 backbone P4
+  - [-1, 3, C2fLightConv, [512]] # 12 (Neck层使用 C2fLightConv)
 
-  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
-  - [[-1, 4], 1, Concat, [1]]      # 融合 backbone P3
-  - [-1, 3, C2fLightConv, [256]]   # 15 (Neck层使用 C2fLightConv)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 4], 1, Concat, [1]] # 融合 backbone P3
+  - [-1, 3, C2fLightConv, [256]] # 15 (Neck层使用 C2fLightConv)
 
   - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 12], 1, Concat, [1]]     # 融合 Neck 12
-  - [-1, 3, C2fLightConv, [512]]   # 18 (Neck层使用 C2fLightConv)
+  - [[-1, 12], 1, Concat, [1]] # 融合 Neck 12
+  - [-1, 3, C2fLightConv, [512]] # 18 (Neck层使用 C2fLightConv)
 
   - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 9], 1, Concat, [1]]      # 融合金字塔输出 P5
-  - [-1, 3, C2fLightConv, [1024]]  # 21 (Neck层使用 C2fLightConv)
+  - [[-1, 9], 1, Concat, [1]] # 融合金字塔输出 P5
+  - [-1, 3, C2fLightConv, [1024]] # 21 (Neck层使用 C2fLightConv)
 
-  - [[15, 18, 21], 1, Detect, [nc]]  # 22-Detect(P3, P4, P5) 检测头
+  - [[15, 18, 21], 1, Detect, [nc]] # 22-Detect(P3, P4, P5) 检测头
