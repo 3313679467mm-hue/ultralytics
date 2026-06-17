@@ -35,6 +35,7 @@ from ultralytics.nn.modules import (
     C2fCBAM,
     C2fCIB,
     C2fECA,
+    C2fLightConv,
     C2fPSA,
     C2fSE,
     C3Ghost,

@@ -173,6 +173,30 @@
         <div class="p-8">
           <!-- 1. 单图检测模块 -->
           <div id="content-image" class="tab-content block">
+            <!-- 模型选择区 -->
+            <div class="mb-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                  <label class="font-semibold text-gray-700">
+                    <i class="fa-solid fa-microchip mr-2 text-blue-600"></i>选择模型：
+                  </label>
+                  <select id="model-select" class="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="baseline">经典基线 YOLOv8n (CIoU)</option>
+                    <option value="champion">冠军模型 (SimSPPF+SIoU+C2fCBAM+C2fLightConv)</option>
+                    <option value="siou">SIoU 模型</option>
+                    <option value="lightconv">LightConv 轻量化模型</option>
+                  </select>
+                </div>
+                <button
+                  id="btn-compare"
+                  onclick="compareModels()"
+                  class="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-md transition-all"
+                >
+                  <i class="fa-solid fa-code-compare mr-2"></i>多模型对比
+                </button>
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <!-- 原图展示区 -->
               <div class="flex flex-col">
@@ -657,6 +681,7 @@
 
         const formData = new FormData();
         formData.append("file", selectedImageFile);
+        formData.append("model_name", document.getElementById("model-select").value);
 
         try {
           // 向后端发送请求
@@ -703,6 +728,79 @@
       }
 
       // ==========================================
+      // 多模型对比逻辑
+      // ==========================================
+      async function compareModels() {
+        if (!selectedImageFile) {
+          alert("请先选择一张图片");
+          return;
+        }
+
+        const loading = document.getElementById("img-loading");
+        loading.classList.remove("hidden");
+
+        const formData = new FormData();
+        formData.append("file", selectedImageFile);
+
+        try {
+          const response = await fetch("http://127.0.0.1:8000/detect/compare", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`服务器错误: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("对比检测结果:", data);
+
+          // 切换到对比视图
+          showCompareView(data);
+        } catch (error) {
+          console.error("对比检测失败:", error);
+          alert("对比检测失败: " + error.message);
+        } finally {
+          setTimeout(() => {
+            loading.classList.add("hidden");
+          }, 500);
+        }
+      }
+
+      function showCompareView(data) {
+        // 隐藏原图上传区和单图检测结果区
+        document.getElementById("img-upload-area").classList.add("hidden");
+        document.getElementById("img-preview-container").classList.remove("hidden");
+        document.getElementById("img-result-container").classList.add("hidden");
+        document.getElementById("img-result-placeholder").classList.add("hidden");
+
+        // 创建对比视图容器
+        let compareContainer = document.getElementById("compare-container");
+        if (!compareContainer) {
+          compareContainer = document.createElement("div");
+          compareContainer.id = "compare-container";
+          compareContainer.className = "mt-6 grid grid-cols-2 gap-4";
+          document.getElementById("content-image").appendChild(compareContainer);
+        }
+
+        // 清空旧内容
+        compareContainer.innerHTML = "";
+
+        // 添加每个模型的检测结果
+        for (const [modelName, result] of Object.entries(data)) {
+          const modelCard = document.createElement("div");
+          modelCard.className = "bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200";
+          modelCard.innerHTML = `
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 font-semibold">
+              ${result.name}
+            </div>
+            <img src="${result.image}" class="w-full h-auto" alt="${result.name}" />
+          `;
+          compareContainer.appendChild(modelCard);
+        }
+      }
+
+      // ==========================================
       // 3. 视频检测逻辑
       // ==========================================
       let selectedVideoFile = null;
@@ -739,6 +837,7 @@
 
         const formData = new FormData();
         formData.append("file", selectedVideoFile);
+        formData.append("model_name", document.getElementById("model-select").value);
 
         try {
           status.innerText = "正在上传视频...";
@@ -850,6 +949,7 @@
 
             const formData = new FormData();
             formData.append("file", blob, "frame.jpg");
+            formData.append("model_name", document.getElementById("model-select").value);
 
             try {
               const response = await fetch(API_URL_FRAME, {

@@ -142,7 +142,6 @@ __all__ = (
     "C2f",
     "C2fAttn",
     "C2fCIB",
-    "C2fLightConv",
     "C2fPSA",
     "C3Ghost",
     "C3k2",

@@ -377,9 +377,11 @@ class C2fLightConv(nn.Module):
             e (float): Expansion ratio.
         """
         super().__init__()
+        from ultralytics.nn.modules.conv import LightConv
+
         self.c = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
+        self.cv2 = Conv((2 + n) * self.c, c2, 1)
         self.m = nn.ModuleList(LightConv(self.c, self.c, k=3) for _ in range(n))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

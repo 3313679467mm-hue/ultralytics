@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 
 from ultralytics import YOLO
@@ -22,4 +23,20 @@ if __name__ == "__main__":
         iou_type="SIoU",  # 强制指定引入了角度惩罚的 SIoU
         device=0,  # 指定 GPU
         workers=4,
+=======
+from ultralytics import YOLO
+
+if __name__ == '__main__':
+    # 1. 载入终极冠军架构模型
+    model = YOLO('ultralytics/cfg/models/v8/yolov8-phone-final.yaml')
+    
+    # 2. 启动终极对比训练 (显式传递 iou_type='SIoU')
+    model.train(
+        data='datasets/phone_detection/data.yaml',  # 数据集路径
+        epochs=150,                                   # 收敛深度
+        batch=4,                                      # 批次大小
+        iou_type='SIoU',                              # 强制指定引入了角度惩罚的 SIoU
+        device=0,                                     # 指定 GPU
+        workers=4
+>>>>>>> 597c43c (feat: 添加告警管理系统与手机端边缘部署)
     )
