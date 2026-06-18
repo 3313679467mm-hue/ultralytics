@@ -109,10 +109,16 @@ class DFLoss(nn.Module):
 class BboxLoss(nn.Module):
     """Criterion class for computing training losses for bounding boxes."""
 
-    def __init__(self, reg_max: int = 16):
-        """Initialize the BboxLoss module with regularization maximum and DFL settings."""
+    def __init__(self, reg_max: int = 16, iou_type: str = "SIoU"):
+        """Initialize the BboxLoss module with regularization maximum and DFL settings.
+
+        Args:
+            reg_max (int): Maximum value for regression in DFL.
+            iou_type (str): Type of IoU loss to use. Options: 'GIoU', 'DIoU', 'CIoU', 'SIoU'.
+        """
         super().__init__()
         self.dfl_loss = DFLoss(reg_max) if reg_max > 1 else None
+        self.iou_type = iou_type
 
     def forward(
         self,
@@ -128,7 +134,17 @@ class BboxLoss(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute IoU and DFL losses for bounding boxes."""
         weight = target_scores.sum(-1)[fg_mask].unsqueeze(-1)
-        iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=True)
+
+        # 根据配置的 IoU 类型计算损失
+        if self.iou_type == "GIoU":
+            iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, GIoU=True)
+        elif self.iou_type == "DIoU":
+            iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, DIoU=True)
+        elif self.iou_type == "CIoU":
+            iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=True)
+        else:  # 默认 SIoU
+            iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, SIoU=True)
+
         loss_iou = ((1.0 - iou) * weight).sum() / target_scores_sum
 
         # DFL loss
@@ -333,8 +349,17 @@ class KeypointLoss(nn.Module):
 class v8DetectionLoss:
     """Criterion class for computing training losses for YOLOv8 object detection."""
 
-    def __init__(self, model, tal_topk: int = 10, tal_topk2: int | None = None):  # model must be de-paralleled
-        """Initialize v8DetectionLoss with model parameters and task-aligned assignment settings."""
+    def __init__(
+        self, model, tal_topk: int = 10, tal_topk2: int | None = None, iou_type: str = "SIoU"
+    ):  # model must be de-paralleled
+        """Initialize v8DetectionLoss with model parameters and task-aligned assignment settings.
+
+        Args:
+            model: YOLO detection model
+            tal_topk (int): Top-k candidates for task-aligned assignment
+            tal_topk2 (int, optional): Secondary top-k value
+            iou_type (str): Type of IoU loss to use. Options: 'GIoU', 'DIoU', 'CIoU', 'SIoU'.
+        """
         device = next(model.parameters()).device  # get model device
         h = model.args  # hyperparameters
 
@@ -356,8 +381,9 @@ class v8DetectionLoss:
             beta=6.0,
             stride=self.stride.tolist(),
             topk2=tal_topk2,
+            iou_type=iou_type,
         )
-        self.bbox_loss = BboxLoss(m.reg_max).to(device)
+        self.bbox_loss = BboxLoss(m.reg_max, iou_type=iou_type).to(device)
         self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
 
     def preprocess(self, targets: torch.Tensor, batch_size: int, scale_tensor: torch.Tensor) -> torch.Tensor:

@@ -1,789 +1,982 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YOLOv8 手机检测系统</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Font Awesome 图标 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        /* 自定义一些动画和交互样式 */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
+      /* 自定义一些动画和交互样式 */
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+      }
+      .drag-active {
+        border-color: #3b82f6 !important;
+        background-color: #eff6ff !important;
+      }
+      .loader {
+        border-top-color: #3b82f6;
+        -webkit-animation: spinner 1.5s linear infinite;
+        animation: spinner 1.5s linear infinite;
+      }
+      @keyframes spinner {
+        0% {
+          transform: rotate(0deg);
         }
-        .drag-active {
-            border-color: #3b82f6 !important;
-            background-color: #eff6ff !important;
+        100% {
+          transform: rotate(360deg);
         }
-        .loader {
-            border-top-color: #3b82f6;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* 隐藏滚动条但保持可滚动 */
-        ::-webkit-scrollbar { display: none; }
-        
-        /* 脸部容器 */
-        .face-container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 150px;
-            height: 150px;
-            background-color: #ffdb58;
-            border-radius: 50%;
-            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: all 0.3s ease;
-            z-index: 9999;
-        }
-        .face-container:hover {
-            background-color: #fffa90;
-            transform: translate(-50%, -50%) scale(1.05);
-        }
-        .face-container.sad {
-            background-color: #d1d1d1;
-        }
-        
-        /* 眼睛 */
-        .eye-socket {
-            position: absolute;
-            top: 55px;
-            width: 35px;
-            height: 35px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .left-eye { left: 30px; }
-        .right-eye { right: 30px; }
+      }
+      /* 隐藏滚动条但保持可滚动 */
+      ::-webkit-scrollbar {
+        display: none;
+      }
 
-        .pupil {
-            width: 15px;
-            height: 15px;
-            background: #333;
-            border-radius: 50%;
-            position: relative;
-        }
-        
-        /* 嘴巴 - 初始状态（平静/微露） */
-        .mouth {
-            position: absolute;
-            bottom: 30px;
-            width: 45px;
-            height: 15px;
-            border: 3px solid #b38f00;
-            border-top: none;
-            border-radius: 0 0 22px 22px;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
-        
-        /* 高兴状态：大笑 */
-        .face-container.happy .mouth {
-            height: 30px;
-            border-radius: 0 0 38px 38px;
-            background-color: #ff6b6b;
-            border-color: #900;
-        }
-        
-        /* 难过状态：撇嘴 */
-        .face-container.sad .mouth {
-            height: 11px;
-            border: 3px solid #666;
-            border-bottom: none;
-            border-radius: 22px 22px 0 0;
-            bottom: 22px;
-        }
+      /* 脸部容器 */
+      .face-container {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 150px;
+        height: 150px;
+        background-color: #ffdb58;
+        border-radius: 50%;
+        box-shadow:
+          inset -10px -10px 20px rgba(0, 0, 0, 0.1),
+          0 10px 20px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s ease;
+        z-index: 9999;
+      }
+      .face-container:hover {
+        background-color: #fffa90;
+        transform: translate(-50%, -50%) scale(1.05);
+      }
+      .face-container.sad {
+        background-color: #d1d1d1;
+      }
+
+      /* 眼睛 */
+      .eye-socket {
+        position: absolute;
+        top: 55px;
+        width: 35px;
+        height: 35px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .left-eye {
+        left: 30px;
+      }
+      .right-eye {
+        right: 30px;
+      }
+
+      .pupil {
+        width: 15px;
+        height: 15px;
+        background: #333;
+        border-radius: 50%;
+        position: relative;
+      }
+
+      /* 嘴巴 - 初始状态（平静/微露） */
+      .mouth {
+        position: absolute;
+        bottom: 30px;
+        width: 45px;
+        height: 15px;
+        border: 3px solid #b38f00;
+        border-top: none;
+        border-radius: 0 0 22px 22px;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      }
+
+      /* 高兴状态：大笑 */
+      .face-container.happy .mouth {
+        height: 30px;
+        border-radius: 0 0 38px 38px;
+        background-color: #ff6b6b;
+        border-color: #900;
+      }
+
+      /* 难过状态：撇嘴 */
+      .face-container.sad .mouth {
+        height: 11px;
+        border: 3px solid #666;
+        border-bottom: none;
+        border-radius: 22px 22px 0 0;
+        bottom: 22px;
+      }
     </style>
-</head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans text-gray-800">
-
+  </head>
+  <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans text-gray-800">
     <div class="container mx-auto px-4 py-8 max-w-5xl">
-        
-        <!-- 头部区域 -->
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-2">
-                <i class="fa-solid fa-mobile-screen-button mr-2"></i>智能手机检测系统
-            </h1>
-            <p class="text-gray-500">基于 YOLOv8 的高精度目标检测引擎</p>
-        </header>
+      <!-- 头部区域 -->
+      <header class="text-center mb-10">
+        <h1
+          class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-2"
+        >
+          <i class="fa-solid fa-mobile-screen-button mr-2"></i>智能手机检测系统
+        </h1>
+        <p class="text-gray-500">基于 YOLOv8 的高精度目标检测引擎</p>
+      </header>
 
-        <!-- 跟随鼠标转动的眼睛表情 -->
-        <div class="face-container" id="face-container">
-            <div class="eye-socket left-eye">
-                <div class="pupil"></div>
-            </div>
-            <div class="eye-socket right-eye">
-                <div class="pupil"></div>
-            </div>
-            <div class="mouth"></div>
+      <!-- 跟随鼠标转动的眼睛表情 -->
+      <div class="face-container" id="face-container">
+        <div class="eye-socket left-eye">
+          <div class="pupil"></div>
+        </div>
+        <div class="eye-socket right-eye">
+          <div class="pupil"></div>
+        </div>
+        <div class="mouth"></div>
+      </div>
+
+      <!-- 主体卡片 -->
+      <div class="glass-panel rounded-2xl shadow-2xl overflow-hidden border border-white">
+        <!-- 导航 Tabs -->
+        <div class="flex border-b border-gray-200 bg-gray-50/50">
+          <button
+            onclick="switchTab('image')"
+            id="tab-image"
+            class="flex-1 py-4 text-center font-semibold text-blue-600 border-b-2 border-blue-600 transition-all hover:bg-gray-100"
+          >
+            <i class="fa-regular fa-image mr-2"></i>单图检测
+          </button>
+          <button
+            onclick="switchTab('video')"
+            id="tab-video"
+            class="flex-1 py-4 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-all hover:bg-gray-100"
+          >
+            <i class="fa-solid fa-film mr-2"></i>视频检测
+          </button>
+          <button
+            onclick="switchTab('webcam')"
+            id="tab-webcam"
+            class="flex-1 py-4 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-all hover:bg-gray-100"
+          >
+            <i class="fa-solid fa-video mr-2"></i>实时监控
+          </button>
         </div>
 
-        <!-- 主体卡片 -->
-        <div class="glass-panel rounded-2xl shadow-2xl overflow-hidden border border-white">
-            
-            <!-- 导航 Tabs -->
-            <div class="flex border-b border-gray-200 bg-gray-50/50">
-                <button onclick="switchTab('image')" id="tab-image" class="flex-1 py-4 text-center font-semibold text-blue-600 border-b-2 border-blue-600 transition-all hover:bg-gray-100">
-                    <i class="fa-regular fa-image mr-2"></i>单图检测
+        <div class="p-8">
+          <!-- 1. 单图检测模块 -->
+          <div id="content-image" class="tab-content block">
+            <!-- 模型选择区 -->
+            <div class="mb-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                  <label class="font-semibold text-gray-700">
+                    <i class="fa-solid fa-microchip mr-2 text-blue-600"></i>选择模型：
+                  </label>
+                  <select
+                    id="model-select"
+                    class="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="baseline">经典基线 YOLOv8n (CIoU)</option>
+                    <option value="champion">冠军模型 (SimSPPF+SIoU+C2fCBAM+C2fLightConv)</option>
+                    <option value="siou">SIoU 模型</option>
+                    <option value="lightconv">LightConv 轻量化模型</option>
+                  </select>
+                </div>
+                <button
+                  id="btn-compare"
+                  onclick="compareModels()"
+                  class="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-lg shadow-md transition-all"
+                >
+                  <i class="fa-solid fa-code-compare mr-2"></i>多模型对比
                 </button>
-                <button onclick="switchTab('video')" id="tab-video" class="flex-1 py-4 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-all hover:bg-gray-100">
-                    <i class="fa-solid fa-film mr-2"></i>视频检测
-                </button>
-                <button onclick="switchTab('webcam')" id="tab-webcam" class="flex-1 py-4 text-center font-semibold text-gray-500 border-b-2 border-transparent transition-all hover:bg-gray-100">
-                    <i class="fa-solid fa-video mr-2"></i>实时监控
-                </button>
+              </div>
             </div>
 
-            <div class="p-8">
-                <!-- 1. 单图检测模块 -->
-                <div id="content-image" class="tab-content block">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <!-- 原图展示区 -->
-                        <div class="flex flex-col">
-                            <h3 class="text-lg font-bold mb-3 text-gray-700">原图</h3>
-                            <div class="flex-1 bg-gray-100 rounded-xl overflow-hidden relative border border-gray-200 flex items-center justify-center min-h-[300px]">
-                                <div id="img-upload-area" class="flex flex-col items-center justify-center p-6 transition-all hover:bg-gray-50 cursor-pointer" onclick="document.getElementById('image-input').click()">
-                                    <i class="fa-solid fa-cloud-arrow-up text-5xl text-gray-400 mb-4"></i>
-                                    <p class="text-gray-600 mb-2">点击或将图片拖拽至此</p>
-                                    <p class="text-xs text-gray-400">支持 JPG, PNG, JPEG 格式</p>
-                                    <input type="file" id="image-input" class="hidden" accept="image/*" onchange="handleImageSelect(event)">
-                                </div>
-                                <div id="img-preview-container" class="relative hidden w-full h-full">
-                                    <img id="image-preview" src="" class="w-full h-full object-contain" alt="原图">
-                                    <button id="btn-delete-img" onclick="deleteImage()" class="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition-all opacity-80 hover:opacity-100">
-                                        <i class="fa-solid fa-trash text-sm"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <button id="btn-detect-img" onclick="detectImage()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-all opacity-50 cursor-not-allowed" disabled>
-                                <i class="fa-solid fa-microchip mr-2"></i>开始检测
-                            </button>
-                        </div>
-                        <!-- 检测结果展示区 -->
-                        <div class="flex flex-col">
-                            <h3 class="text-lg font-bold mb-3 text-gray-700">检测结果</h3>
-                            <div class="flex-1 bg-gray-100 rounded-xl overflow-hidden relative border border-gray-200 flex items-center justify-center min-h-[300px]">
-                                <!-- 加载动画 -->
-                                <div id="img-loading" class="hidden absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center">
-                                    <div class="loader border-4 border-gray-200 rounded-full w-12 h-12 mb-3"></div>
-                                    <p class="text-blue-600 font-semibold">AI 正在努力识别中...</p>
-                                </div>
-                                <div id="img-result-container" class="relative hidden w-full h-[300px] flex items-center justify-center">
-                                    <img id="image-result" src="" class="max-w-full max-h-[300px] object-contain" alt="检测结果">
-                                </div>
-                                <p id="img-result-placeholder" class="text-gray-400"><i class="fa-solid fa-check-circle text-4xl mb-2 block text-center"></i>等待检测结果</p>
-                            </div>
-                            <div class="mt-4 w-full h-12"></div>
-                        </div>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <!-- 原图展示区 -->
+              <div class="flex flex-col">
+                <h3 class="text-lg font-bold mb-3 text-gray-700">原图</h3>
+                <div
+                  class="flex-1 bg-gray-100 rounded-xl overflow-hidden relative border border-gray-200 flex items-center justify-center min-h-[300px]"
+                >
+                  <div
+                    id="img-upload-area"
+                    class="flex flex-col items-center justify-center p-6 transition-all hover:bg-gray-50 cursor-pointer"
+                    onclick="document.getElementById('image-input').click()"
+                  >
+                    <i class="fa-solid fa-cloud-arrow-up text-5xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-2">点击或将图片拖拽至此</p>
+                    <p class="text-xs text-gray-400">支持 JPG, PNG, JPEG 格式</p>
+                    <input
+                      type="file"
+                      id="image-input"
+                      class="hidden"
+                      accept="image/*"
+                      onchange="handleImageSelect(event)"
+                    />
+                  </div>
+                  <div id="img-preview-container" class="relative hidden w-full h-full">
+                    <img id="image-preview" src="" class="w-full h-full object-contain" alt="原图" />
+                    <button
+                      id="btn-delete-img"
+                      onclick="deleteImage()"
+                      class="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition-all opacity-80 hover:opacity-100"
+                    >
+                      <i class="fa-solid fa-trash text-sm"></i>
+                    </button>
+                  </div>
                 </div>
-
-                <!-- 2. 视频检测模块 -->
-                <div id="content-video" class="tab-content hidden">
-                    <div class="max-w-3xl mx-auto text-center">
-                        <div class="mb-6 flex items-center justify-center gap-4">
-                            <label class="px-6 py-3 bg-white border border-gray-300 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-all font-medium text-gray-700">
-                                <i class="fa-solid fa-folder-open mr-2 text-blue-500"></i>选择视频文件
-                                <input type="file" id="video-input" class="hidden" accept="video/mp4,video/x-m4v,video/*" onchange="handleVideoSelect(event)">
-                            </label>
-                            <button id="btn-detect-vid" onclick="detectVideo()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all font-medium opacity-50 cursor-not-allowed" disabled>
-                                <i class="fa-solid fa-microchip mr-2"></i>处理视频
-                            </button>
-                        </div>
-                        <p id="video-filename" class="text-sm text-gray-500 mb-4 hidden"></p>
-
-                        <div class="bg-black rounded-xl overflow-hidden shadow-lg relative aspect-video flex items-center justify-center">
-                             <!-- 加载动画 -->
-                             <div id="vid-loading" class="hidden absolute inset-0 bg-gray-900/80 z-10 flex flex-col items-center justify-center">
-                                <div class="loader border-4 border-gray-600 rounded-full w-12 h-12 mb-3"></div>
-                                <p id="vid-progress" class="text-white font-semibold">视频处理中，请耐心等待...</p>
-                                <p id="vid-status" class="text-gray-400 text-sm mt-2">正在连接服务器...</p>
-                            </div>
-                            <video id="video-player" class="w-full h-full hidden" controls></video>
-                            <p id="vid-placeholder" class="text-gray-500"><i class="fa-solid fa-film text-4xl mb-2 block text-center"></i>预览区</p>
-                        </div>
-                    </div>
+                <button
+                  id="btn-detect-img"
+                  onclick="detectImage()"
+                  class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-all opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  <i class="fa-solid fa-microchip mr-2"></i>开始检测
+                </button>
+              </div>
+              <!-- 检测结果展示区 -->
+              <div class="flex flex-col">
+                <h3 class="text-lg font-bold mb-3 text-gray-700">检测结果</h3>
+                <div
+                  class="flex-1 bg-gray-100 rounded-xl overflow-hidden relative border border-gray-200 flex items-center justify-center min-h-[300px]"
+                >
+                  <!-- 加载动画 -->
+                  <div
+                    id="img-loading"
+                    class="hidden absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center"
+                  >
+                    <div class="loader border-4 border-gray-200 rounded-full w-12 h-12 mb-3"></div>
+                    <p class="text-blue-600 font-semibold">AI 正在努力识别中...</p>
+                  </div>
+                  <div
+                    id="img-result-container"
+                    class="relative hidden w-full h-[300px] flex items-center justify-center"
+                  >
+                    <img id="image-result" src="" class="max-w-full max-h-[300px] object-contain" alt="检测结果" />
+                  </div>
+                  <p id="img-result-placeholder" class="text-gray-400">
+                    <i class="fa-solid fa-check-circle text-4xl mb-2 block text-center"></i>等待检测结果
+                  </p>
                 </div>
-
-                <!-- 3. 摄像头实时监控模块 -->
-                <div id="content-webcam" class="tab-content hidden">
-                    <div class="max-w-4xl mx-auto">
-                        <div class="flex justify-center gap-4 mb-6">
-                            <button id="btn-start-cam" onclick="startWebcam()" class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all font-medium">
-                                <i class="fa-solid fa-video mr-2"></i>开启摄像头
-                            </button>
-                            <button id="btn-stop-cam" onclick="stopWebcam()" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all font-medium hidden">
-                                <i class="fa-solid fa-video-slash mr-2"></i>关闭摄像头
-                            </button>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="flex flex-col items-center">
-                                <h4 class="mb-2 text-gray-600 font-medium"><i class="fa-solid fa-camera mr-2"></i>原始画面</h4>
-                                <div class="w-full bg-black rounded-xl overflow-hidden aspect-video relative">
-                                    <video id="webcam-raw" class="w-full h-full object-cover" autoplay playsinline muted></video>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-center">
-                                <h4 class="mb-2 text-blue-600 font-medium"><i class="fa-solid fa-crosshairs mr-2"></i>检测画面 (YOLOv8)</h4>
-                                <div class="w-full bg-gray-900 rounded-xl overflow-hidden aspect-video relative flex items-center justify-center">
-                                    <img id="webcam-result" class="w-full h-full object-cover hidden" alt="识别结果">
-                                    <p id="cam-placeholder" class="text-gray-500">等待摄像头开启...</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 隐藏的Canvas用于捕获帧 -->
-                        <canvas id="hidden-canvas" class="hidden"></canvas>
-                    </div>
-                </div>
-
+                <div class="mt-4 w-full h-12"></div>
+              </div>
             </div>
+          </div>
+
+          <!-- 2. 视频检测模块 -->
+          <div id="content-video" class="tab-content hidden">
+            <div class="max-w-3xl mx-auto text-center">
+              <div class="mb-6 flex items-center justify-center gap-4">
+                <label
+                  class="px-6 py-3 bg-white border border-gray-300 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-all font-medium text-gray-700"
+                >
+                  <i class="fa-solid fa-folder-open mr-2 text-blue-500"></i>选择视频文件
+                  <input
+                    type="file"
+                    id="video-input"
+                    class="hidden"
+                    accept="video/mp4,video/x-m4v,video/*"
+                    onchange="handleVideoSelect(event)"
+                  />
+                </label>
+                <button
+                  id="btn-detect-vid"
+                  onclick="detectVideo()"
+                  class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all font-medium opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  <i class="fa-solid fa-microchip mr-2"></i>处理视频
+                </button>
+              </div>
+              <p id="video-filename" class="text-sm text-gray-500 mb-4 hidden"></p>
+
+              <div
+                class="bg-black rounded-xl overflow-hidden shadow-lg relative aspect-video flex items-center justify-center"
+              >
+                <!-- 加载动画 -->
+                <div
+                  id="vid-loading"
+                  class="hidden absolute inset-0 bg-gray-900/80 z-10 flex flex-col items-center justify-center"
+                >
+                  <div class="loader border-4 border-gray-600 rounded-full w-12 h-12 mb-3"></div>
+                  <p id="vid-progress" class="text-white font-semibold">视频处理中，请耐心等待...</p>
+                  <p id="vid-status" class="text-gray-400 text-sm mt-2">正在连接服务器...</p>
+                </div>
+                <video id="video-player" class="w-full h-full hidden" controls></video>
+                <p id="vid-placeholder" class="text-gray-500">
+                  <i class="fa-solid fa-film text-4xl mb-2 block text-center"></i>预览区
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. 摄像头实时监控模块 -->
+          <div id="content-webcam" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+              <div class="flex justify-center gap-4 mb-6">
+                <button
+                  id="btn-start-cam"
+                  onclick="startWebcam()"
+                  class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all font-medium"
+                >
+                  <i class="fa-solid fa-video mr-2"></i>开启摄像头
+                </button>
+                <button
+                  id="btn-stop-cam"
+                  onclick="stopWebcam()"
+                  class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all font-medium hidden"
+                >
+                  <i class="fa-solid fa-video-slash mr-2"></i>关闭摄像头
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col items-center">
+                  <h4 class="mb-2 text-gray-600 font-medium"><i class="fa-solid fa-camera mr-2"></i>原始画面</h4>
+                  <div class="w-full bg-black rounded-xl overflow-hidden aspect-video relative">
+                    <video id="webcam-raw" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                  </div>
+                </div>
+                <div class="flex flex-col items-center">
+                  <h4 class="mb-2 text-blue-600 font-medium">
+                    <i class="fa-solid fa-crosshairs mr-2"></i>检测画面 (YOLOv8)
+                  </h4>
+                  <div
+                    class="w-full bg-gray-900 rounded-xl overflow-hidden aspect-video relative flex items-center justify-center"
+                  >
+                    <img id="webcam-result" class="w-full h-full object-cover hidden" alt="识别结果" />
+                    <p id="cam-placeholder" class="text-gray-500">等待摄像头开启...</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 隐藏的Canvas用于捕获帧 -->
+              <canvas id="hidden-canvas" class="hidden"></canvas>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- JavaScript 逻辑 -->
     <script>
-        // ==========================================
-        // API 接口配置 (请修改为你自己的后端地址)
-        // ==========================================
-        const API_URL_IMAGE = "http://127.0.0.1:8000/detect/image"; 
-        const API_URL_VIDEO = "http://127.0.0.1:8000/detect/video"; 
-        const API_URL_FRAME = "http://127.0.0.1:8000/detect/frame"; 
+      // ==========================================
+      // API 接口配置 (请修改为你自己的后端地址)
+      // ==========================================
+      const API_URL_IMAGE = "http://127.0.0.1:8000/detect/image";
+      const API_URL_VIDEO = "http://127.0.0.1:8000/detect/video";
+      const API_URL_FRAME = "http://127.0.0.1:8000/detect/frame";
 
-        // ==========================================
-        // 1. Tab 切换逻辑
-        // ==========================================
-        function switchTab(tabId) {
-            // 隐藏所有内容
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            // 重置所有按钮样式
-            document.querySelectorAll('button[id^="tab-"]').forEach(el => {
-                el.classList.remove('text-blue-600', 'border-blue-600');
-                el.classList.add('text-gray-500', 'border-transparent');
-            });
-
-            // 显示选中内容
-            document.getElementById('content-' + tabId).classList.remove('hidden');
-            // 高亮选中按钮
-            const activeBtn = document.getElementById('tab-' + tabId);
-            activeBtn.classList.remove('text-gray-500', 'border-transparent');
-            activeBtn.classList.add('text-blue-600', 'border-blue-600');
-
-            // 如果切出摄像头页面，自动关闭摄像头
-            if(tabId !== 'webcam') stopWebcam();
-            
-            // 根据切换的页面调整表情位置
-            if(tabId === 'video') {
-                animateFaceToVideoLeft();
-            } else if (tabId === 'image') {
-                animateFaceToCenter();
-            } else if (tabId === 'webcam') {
-                animateFaceToWebcamLeft();
-            }
-        }
-
-        // 表情动画：移动到实时监控左边
-        function animateFaceToWebcamLeft() {
-            const faceContainer = document.getElementById('face-container');
-            const webcamContent = document.getElementById('content-webcam');
-            
-            console.log('animateFaceToWebcamLeft called');
-            console.log('webcamContent hidden:', webcamContent.classList.contains('hidden'));
-            
-            // 等待DOM更新完成
-            setTimeout(() => {
-                const webcamRect = webcamContent.getBoundingClientRect();
-                console.log('webcamRect:', webcamRect);
-                
-                // 计算实时监控框左边的位置
-                const leftPosition = webcamRect.left - 50; // 离左边-50px（更靠左）
-                console.log('leftPosition:', leftPosition);
-                
-                // 设置表情位置
-                faceContainer.style.transition = 'all 1s ease-in-out';
-                faceContainer.style.position = 'fixed';
-                faceContainer.style.top = '50%';
-                faceContainer.style.left = leftPosition + 'px';
-                faceContainer.style.transform = 'translate(-50%, -50%)';
-                faceContainer.style.transformOrigin = 'center';
-                
-                console.log('faceContainer style left:', faceContainer.style.left);
-                console.log('faceContainer style transform:', faceContainer.style.transform);
-                
-                // 鼠标悬停时保持在左边
-                faceContainer.onmouseenter = function() {
-                    faceContainer.style.transform = 'translate(-50%, -50%) scale(1.05)';
-                };
-                faceContainer.onmouseleave = function() {
-                    faceContainer.style.transform = 'translate(-50%, -50%)';
-                };
-            }, 300);
-        }
-
-        // 表情动画：移动到视频框左边
-        function animateFaceToVideoLeft() {
-            const faceContainer = document.getElementById('face-container');
-            const videoContent = document.getElementById('content-video');
-            
-            // 等待DOM更新完成
-            setTimeout(() => {
-                const videoRect = videoContent.getBoundingClientRect();
-                
-                // 计算视频框左边的位置
-                const leftPosition = videoRect.left - 50; // 离左边-50px（更靠左）
-                
-                // 设置表情位置
-                faceContainer.style.transition = 'all 1s ease-in-out';
-                faceContainer.style.position = 'fixed';
-                faceContainer.style.top = '50%';
-                faceContainer.style.left = leftPosition + 'px';
-                faceContainer.style.transform = 'translateY(-50%)';
-                faceContainer.style.transformOrigin = 'center';
-                
-                // 鼠标悬停时保持在左边
-                faceContainer.onmouseenter = function() {
-                    faceContainer.style.transform = 'translateY(-50%) scale(1.05)';
-                };
-                faceContainer.onmouseleave = function() {
-                    faceContainer.style.transform = 'translateY(-50%)';
-                };
-            }, 300);
-        }
-        
-        // 表情动画：回到中间
-        function animateFaceToCenter() {
-            const faceContainer = document.getElementById('face-container');
-            
-            faceContainer.style.transition = 'all 1s ease-in-out';
-            faceContainer.style.position = 'fixed';
-            faceContainer.style.top = '50%';
-            faceContainer.style.left = '50%';
-            faceContainer.style.transform = 'translate(-50%, -50%)';
-            faceContainer.style.transformOrigin = 'center';
-            
-            // 恢复鼠标悬停效果
-            faceContainer.onmouseenter = function() {
-                faceContainer.style.transform = 'translate(-50%, -50%) scale(1.05)';
-            };
-            faceContainer.onmouseleave = function() {
-                faceContainer.style.transform = 'translate(-50%, -50%)';
-            };
-        }
-        
-        // 页面加载时让表情回到中间
-        window.addEventListener('load', function() {
-            animateFaceToCenter();
-        });
-        
-        // 鼠标靠近删除按钮时，表情变伤心
-        const deleteBtn = document.getElementById('btn-delete-img');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('mouseenter', function() {
-                sadFace();
-            });
-            deleteBtn.addEventListener('mouseleave', function() {
-                resetFace();
-            });
-        }
-        
-        // 让表情变伤心
-        function sadFace() {
-            const faceContainer = document.getElementById('face-container');
-            faceContainer.classList.add('sad');
-        }
-        
-        // 重置表情
-        function resetFace() {
-            const faceContainer = document.getElementById('face-container');
-            faceContainer.classList.remove('sad');
-        }
-
-        // ==========================================
-        // 2. 单图检测逻辑
-        // ==========================================
-        const imgUploadArea = document.getElementById('img-upload-area');
-        const imgPreviewContainer = document.getElementById('img-preview-container');
-        let selectedImageFile = null;
-
-        // 拖拽事件
-        imgUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            imgUploadArea.classList.add('drag-active');
-        });
-        imgUploadArea.addEventListener('dragleave', () => imgUploadArea.classList.remove('drag-active'));
-        imgUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            imgUploadArea.classList.remove('drag-active');
-            if (e.dataTransfer.files.length) {
-                document.getElementById('image-input').files = e.dataTransfer.files;
-                handleImageSelect({ target: { files: e.dataTransfer.files } });
-            }
+      // ==========================================
+      // 1. Tab 切换逻辑
+      // ==========================================
+      function switchTab(tabId) {
+        // 隐藏所有内容
+        document.querySelectorAll(".tab-content").forEach((el) => el.classList.add("hidden"));
+        // 重置所有按钮样式
+        document.querySelectorAll('button[id^="tab-"]').forEach((el) => {
+          el.classList.remove("text-blue-600", "border-blue-600");
+          el.classList.add("text-gray-500", "border-transparent");
         });
 
-        function deleteImage() {
-            selectedImageFile = null;
-            document.getElementById('image-preview').src = '';
-            imgPreviewContainer.classList.add('hidden');
-            imgUploadArea.classList.remove('hidden');
-            
-            // 清空检测结果
-            document.getElementById('image-result').src = '';
-            document.getElementById('image-result').classList.add('hidden');
-            document.getElementById('img-result-container').classList.add('hidden');
-            document.getElementById('img-result-placeholder').classList.remove('hidden');
-            
-            // 重置检测按钮
-            const btn = document.getElementById('btn-detect-img');
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-            
-            // 重置 input file 元素，清空已选择的文件
-            const fileInput = document.getElementById('image-input');
-            fileInput.value = '';
+        // 显示选中内容
+        document.getElementById("content-" + tabId).classList.remove("hidden");
+        // 高亮选中按钮
+        const activeBtn = document.getElementById("tab-" + tabId);
+        activeBtn.classList.remove("text-gray-500", "border-transparent");
+        activeBtn.classList.add("text-blue-600", "border-blue-600");
+
+        // 如果切出摄像头页面，自动关闭摄像头
+        if (tabId !== "webcam") stopWebcam();
+
+        // 根据切换的页面调整表情位置
+        if (tabId === "video") {
+          animateFaceToVideoLeft();
+        } else if (tabId === "image") {
+          animateFaceToCenter();
+        } else if (tabId === "webcam") {
+          animateFaceToWebcamLeft();
         }
+      }
 
-        function handleImageSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            selectedImageFile = file;
-            
-            // 显示原图
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const imgPreview = document.getElementById('image-preview');
-                imgPreview.src = e.target.result;
-                imgPreviewContainer.classList.remove('hidden');
-                document.getElementById('img-upload-area').classList.add('hidden');
-                
-                // 启用检测按钮
-                const btn = document.getElementById('btn-detect-img');
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-            reader.readAsDataURL(file);
-        }
+      // 表情动画：移动到实时监控左边
+      function animateFaceToWebcamLeft() {
+        const faceContainer = document.getElementById("face-container");
+        const webcamContent = document.getElementById("content-webcam");
 
-        // 跟随鼠标转动眼睛的表情
-        document.addEventListener('mousemove', function(e) {
-            const faceContainer = document.getElementById('face-container');
-            const pupils = document.querySelectorAll('.pupil');
-            
-            // 如果表情在视频左边，眼睛仍然跟随鼠标
-            pupils.forEach(pupil => {
-                // 获取眼眶的中心位置
-                const rect = pupil.parentElement.getBoundingClientRect();
-                const eyeCenterX = rect.left + rect.width / 2;
-                const eyeCenterY = rect.top + rect.height / 2;
+        console.log("animateFaceToWebcamLeft called");
+        console.log("webcamContent hidden:", webcamContent.classList.contains("hidden"));
 
-                // 计算鼠标相对于中心的角度
-                const angle = Math.atan2(e.clientY - eyeCenterY, e.clientX - eyeCenterX);
-                
-                // 限制眼珠移动距离（不跑出眼眶）
-                const distance = 12; 
-                const x = Math.cos(angle) * distance;
-                const y = Math.sin(angle) * distance;
+        // 等待DOM更新完成
+        setTimeout(() => {
+          const webcamRect = webcamContent.getBoundingClientRect();
+          console.log("webcamRect:", webcamRect);
 
-                pupil.style.transform = `translate(${x}px, ${y}px)`;
-            });
+          // 计算实时监控框左边的位置
+          const leftPosition = webcamRect.left - 50; // 离左边-50px（更靠左）
+          console.log("leftPosition:", leftPosition);
+
+          // 设置表情位置
+          faceContainer.style.transition = "all 1s ease-in-out";
+          faceContainer.style.position = "fixed";
+          faceContainer.style.top = "50%";
+          faceContainer.style.left = leftPosition + "px";
+          faceContainer.style.transform = "translate(-50%, -50%)";
+          faceContainer.style.transformOrigin = "center";
+
+          console.log("faceContainer style left:", faceContainer.style.left);
+          console.log("faceContainer style transform:", faceContainer.style.transform);
+
+          // 鼠标悬停时保持在左边
+          faceContainer.onmouseenter = function () {
+            faceContainer.style.transform = "translate(-50%, -50%) scale(1.05)";
+          };
+          faceContainer.onmouseleave = function () {
+            faceContainer.style.transform = "translate(-50%, -50%)";
+          };
+        }, 300);
+      }
+
+      // 表情动画：移动到视频框左边
+      function animateFaceToVideoLeft() {
+        const faceContainer = document.getElementById("face-container");
+        const videoContent = document.getElementById("content-video");
+
+        // 等待DOM更新完成
+        setTimeout(() => {
+          const videoRect = videoContent.getBoundingClientRect();
+
+          // 计算视频框左边的位置
+          const leftPosition = videoRect.left - 50; // 离左边-50px（更靠左）
+
+          // 设置表情位置
+          faceContainer.style.transition = "all 1s ease-in-out";
+          faceContainer.style.position = "fixed";
+          faceContainer.style.top = "50%";
+          faceContainer.style.left = leftPosition + "px";
+          faceContainer.style.transform = "translateY(-50%)";
+          faceContainer.style.transformOrigin = "center";
+
+          // 鼠标悬停时保持在左边
+          faceContainer.onmouseenter = function () {
+            faceContainer.style.transform = "translateY(-50%) scale(1.05)";
+          };
+          faceContainer.onmouseleave = function () {
+            faceContainer.style.transform = "translateY(-50%)";
+          };
+        }, 300);
+      }
+
+      // 表情动画：回到中间
+      function animateFaceToCenter() {
+        const faceContainer = document.getElementById("face-container");
+
+        faceContainer.style.transition = "all 1s ease-in-out";
+        faceContainer.style.position = "fixed";
+        faceContainer.style.top = "50%";
+        faceContainer.style.left = "50%";
+        faceContainer.style.transform = "translate(-50%, -50%)";
+        faceContainer.style.transformOrigin = "center";
+
+        // 恢复鼠标悬停效果
+        faceContainer.onmouseenter = function () {
+          faceContainer.style.transform = "translate(-50%, -50%) scale(1.05)";
+        };
+        faceContainer.onmouseleave = function () {
+          faceContainer.style.transform = "translate(-50%, -50%)";
+        };
+      }
+
+      // 页面加载时让表情回到中间
+      window.addEventListener("load", function () {
+        animateFaceToCenter();
+      });
+
+      // 鼠标靠近删除按钮时，表情变伤心
+      const deleteBtn = document.getElementById("btn-delete-img");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("mouseenter", function () {
+          sadFace();
         });
+        deleteBtn.addEventListener("mouseleave", function () {
+          resetFace();
+        });
+      }
 
-        // 鼠标移动到检测按钮时，眼睛变成星星
-        const detectBtn = document.getElementById('btn-detect-img');
-        if (detectBtn) {
-            detectBtn.addEventListener('mouseenter', function() {
-                makeEyesStars();
-            });
-            detectBtn.addEventListener('mouseleave', function() {
-                resetEyes();
-            });
+      // 让表情变伤心
+      function sadFace() {
+        const faceContainer = document.getElementById("face-container");
+        faceContainer.classList.add("sad");
+      }
+
+      // 重置表情
+      function resetFace() {
+        const faceContainer = document.getElementById("face-container");
+        faceContainer.classList.remove("sad");
+      }
+
+      // ==========================================
+      // 2. 单图检测逻辑
+      // ==========================================
+      const imgUploadArea = document.getElementById("img-upload-area");
+      const imgPreviewContainer = document.getElementById("img-preview-container");
+      let selectedImageFile = null;
+
+      // 拖拽事件
+      imgUploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        imgUploadArea.classList.add("drag-active");
+      });
+      imgUploadArea.addEventListener("dragleave", () => imgUploadArea.classList.remove("drag-active"));
+      imgUploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        imgUploadArea.classList.remove("drag-active");
+        if (e.dataTransfer.files.length) {
+          document.getElementById("image-input").files = e.dataTransfer.files;
+          handleImageSelect({ target: { files: e.dataTransfer.files } });
+        }
+      });
+
+      function deleteImage() {
+        selectedImageFile = null;
+        document.getElementById("image-preview").src = "";
+        imgPreviewContainer.classList.add("hidden");
+        imgUploadArea.classList.remove("hidden");
+
+        // 清空检测结果
+        document.getElementById("image-result").src = "";
+        document.getElementById("image-result").classList.add("hidden");
+        document.getElementById("img-result-container").classList.add("hidden");
+        document.getElementById("img-result-placeholder").classList.remove("hidden");
+
+        // 重置检测按钮
+        const btn = document.getElementById("btn-detect-img");
+        btn.disabled = true;
+        btn.classList.add("opacity-50", "cursor-not-allowed");
+
+        // 重置 input file 元素，清空已选择的文件
+        const fileInput = document.getElementById("image-input");
+        fileInput.value = "";
+      }
+
+      function handleImageSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        selectedImageFile = file;
+
+        // 显示原图
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const imgPreview = document.getElementById("image-preview");
+          imgPreview.src = e.target.result;
+          imgPreviewContainer.classList.remove("hidden");
+          document.getElementById("img-upload-area").classList.add("hidden");
+
+          // 启用检测按钮
+          const btn = document.getElementById("btn-detect-img");
+          btn.disabled = false;
+          btn.classList.remove("opacity-50", "cursor-not-allowed");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 跟随鼠标转动眼睛的表情
+      document.addEventListener("mousemove", function (e) {
+        const faceContainer = document.getElementById("face-container");
+        const pupils = document.querySelectorAll(".pupil");
+
+        // 如果表情在视频左边，眼睛仍然跟随鼠标
+        pupils.forEach((pupil) => {
+          // 获取眼眶的中心位置
+          const rect = pupil.parentElement.getBoundingClientRect();
+          const eyeCenterX = rect.left + rect.width / 2;
+          const eyeCenterY = rect.top + rect.height / 2;
+
+          // 计算鼠标相对于中心的角度
+          const angle = Math.atan2(e.clientY - eyeCenterY, e.clientX - eyeCenterX);
+
+          // 限制眼珠移动距离（不跑出眼眶）
+          const distance = 12;
+          const x = Math.cos(angle) * distance;
+          const y = Math.sin(angle) * distance;
+
+          pupil.style.transform = `translate(${x}px, ${y}px)`;
+        });
+      });
+
+      // 鼠标移动到检测按钮时，眼睛变成星星
+      const detectBtn = document.getElementById("btn-detect-img");
+      if (detectBtn) {
+        detectBtn.addEventListener("mouseenter", function () {
+          makeEyesStars();
+        });
+        detectBtn.addEventListener("mouseleave", function () {
+          resetEyes();
+        });
+      }
+
+      // 让眼睛变成星星
+      function makeEyesStars() {
+        const pupils = document.querySelectorAll(".pupil");
+        pupils.forEach((pupil) => {
+          // 临时添加星星样式
+          pupil.style.background = "transparent";
+          pupil.style.boxShadow = "none";
+          pupil.style.width = "20px";
+          pupil.style.height = "20px";
+          pupil.style.transform = "scale(1)";
+
+          // 创建星星形状
+          pupil.style.clipPath =
+            "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)";
+          pupil.style.backgroundColor = "#fbbf24";
+        });
+      }
+
+      // 恢复眼睛
+      function resetEyes() {
+        const pupils = document.querySelectorAll(".pupil");
+        pupils.forEach((pupil) => {
+          pupil.style.background = "#333";
+          pupil.style.boxShadow = "none";
+          pupil.style.width = "15px";
+          pupil.style.height = "15px";
+          pupil.style.clipPath = "none";
+          pupil.style.backgroundColor = "#333";
+        });
+      }
+
+      // 让眼睛变成爱心
+      function makeEyesHearts() {
+        const pupils = document.querySelectorAll(".pupil");
+        pupils.forEach((pupil) => {
+          pupil.style.background = "transparent";
+          pupil.style.boxShadow = "none";
+          pupil.style.width = "20px";
+          pupil.style.height = "20px";
+          pupil.style.transform = "scale(1)";
+
+          // 创建爱心形状
+          pupil.style.clipPath = "polygon(50% 100%, 0 0, 100% 0)";
+          pupil.style.backgroundColor = "#ef4444";
+        });
+      }
+
+      async function detectImage() {
+        if (!selectedImageFile) return;
+
+        const loading = document.getElementById("img-loading");
+        const resultPlaceholder = document.getElementById("img-result-placeholder");
+        const resultContainer = document.getElementById("img-result-container");
+
+        console.log("检测开始 - 容器状态:", resultContainer.classList.contains("hidden"));
+
+        loading.classList.remove("hidden");
+
+        const formData = new FormData();
+        formData.append("file", selectedImageFile);
+        formData.append("model_name", document.getElementById("model-select").value);
+
+        try {
+          // 向后端发送请求
+          const response = await fetch(API_URL_IMAGE, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`服务器错误: ${response.status}`);
+          }
+
+          // 后端返回 JSON (包含 base64 图片)
+          const data = await response.json();
+
+          console.log("检测响应数据:", data);
+
+          // 检查数据格式
+          if (!data.image) {
+            throw new Error("后端未返回检测结果图片");
+          }
+
+          // 显示检测结果
+          console.log("准备显示结果 - 容器状态:", resultContainer.classList.contains("hidden"));
+          resultContainer.classList.remove("hidden");
+          console.log("移除 hidden 后 - 容器状态:", resultContainer.classList.contains("hidden"));
+
+          // 移除图片元素的 hidden 类
+          const imgResult = document.getElementById("image-result");
+          imgResult.classList.remove("hidden");
+
+          document.getElementById("image-result").src = data.image;
+          resultPlaceholder.classList.add("hidden");
+
+          console.log("检测结果已显示");
+        } catch (error) {
+          console.error("图片检测失败:", error);
+          alert("检测失败: " + error.message);
+        } finally {
+          setTimeout(() => {
+            loading.classList.add("hidden");
+          }, 500);
+        }
+      }
+
+      // ==========================================
+      // 多模型对比逻辑
+      // ==========================================
+      async function compareModels() {
+        if (!selectedImageFile) {
+          alert("请先选择一张图片");
+          return;
         }
 
-        // 让眼睛变成星星
-        function makeEyesStars() {
-            const pupils = document.querySelectorAll('.pupil');
-            pupils.forEach(pupil => {
-                // 临时添加星星样式
-                pupil.style.background = 'transparent';
-                pupil.style.boxShadow = 'none';
-                pupil.style.width = '20px';
-                pupil.style.height = '20px';
-                pupil.style.transform = 'scale(1)';
-                
-                // 创建星星形状
-                pupil.style.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
-                pupil.style.backgroundColor = '#fbbf24';
-            });
+        const loading = document.getElementById("img-loading");
+        loading.classList.remove("hidden");
+
+        const formData = new FormData();
+        formData.append("file", selectedImageFile);
+
+        try {
+          const response = await fetch("http://127.0.0.1:8000/detect/compare", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`服务器错误: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("对比检测结果:", data);
+
+          // 切换到对比视图
+          showCompareView(data);
+        } catch (error) {
+          console.error("对比检测失败:", error);
+          alert("对比检测失败: " + error.message);
+        } finally {
+          setTimeout(() => {
+            loading.classList.add("hidden");
+          }, 500);
         }
-        
+      }
+
+      function showCompareView(data) {
+        // 隐藏原图上传区和单图检测结果区
+        document.getElementById("img-upload-area").classList.add("hidden");
+        document.getElementById("img-preview-container").classList.remove("hidden");
+        document.getElementById("img-result-container").classList.add("hidden");
+        document.getElementById("img-result-placeholder").classList.add("hidden");
+
+        // 创建对比视图容器
+        let compareContainer = document.getElementById("compare-container");
+        if (!compareContainer) {
+          compareContainer = document.createElement("div");
+          compareContainer.id = "compare-container";
+          compareContainer.className = "mt-6 grid grid-cols-2 gap-4";
+          document.getElementById("content-image").appendChild(compareContainer);
+        }
+
+        // 清空旧内容
+        compareContainer.innerHTML = "";
+
+        // 添加每个模型的检测结果
+        for (const [modelName, result] of Object.entries(data)) {
+          const modelCard = document.createElement("div");
+          modelCard.className = "bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200";
+          modelCard.innerHTML = `
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 font-semibold">
+              ${result.name}
+            </div>
+            <img src="${result.image}" class="w-full h-auto" alt="${result.name}" />
+          `;
+          compareContainer.appendChild(modelCard);
+        }
+      }
+
+      // ==========================================
+      // 3. 视频检测逻辑
+      // ==========================================
+      let selectedVideoFile = null;
+
+      function handleVideoSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        selectedVideoFile = file;
+
+        document.getElementById("video-filename").innerText = "已选择文件: " + file.name;
+        document.getElementById("video-filename").classList.remove("hidden");
+
+        // 预览原视频
+        const videoPlayer = document.getElementById("video-player");
+        videoPlayer.src = URL.createObjectURL(file);
+        videoPlayer.classList.remove("hidden");
+        document.getElementById("vid-placeholder").classList.add("hidden");
+
+        const btn = document.getElementById("btn-detect-vid");
+        btn.disabled = false;
+        btn.classList.remove("opacity-50", "cursor-not-allowed");
+      }
+
+      async function detectVideo() {
+        if (!selectedVideoFile) return;
+
+        const loading = document.getElementById("vid-loading");
+        const progress = document.getElementById("vid-progress");
+        const status = document.getElementById("vid-status");
+        const placeholder = document.getElementById("vid-placeholder");
+
+        loading.classList.remove("hidden");
+        status.innerText = "正在上传视频...";
+
+        const formData = new FormData();
+        formData.append("file", selectedVideoFile);
+        formData.append("model_name", document.getElementById("model-select").value);
+
+        try {
+          status.innerText = "正在上传视频...";
+
+          const response = await fetch(API_URL_VIDEO, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`服务器错误: ${response.status}`);
+          }
+
+          status.innerText = "正在处理视频...";
+
+          const data = await response.json();
+
+          if (!data.video) {
+            throw new Error("后端未返回处理后的视频");
+          }
+
+          const videoPlayer = document.getElementById("video-player");
+          videoPlayer.src = data.video;
+          videoPlayer.classList.remove("hidden");
+          placeholder.classList.add("hidden");
+
+          status.innerText = "视频处理完成!";
+        } catch (error) {
+          console.error("视频检测失败:", error);
+          alert("检测失败: " + error.message);
+        } finally {
+          setTimeout(() => {
+            loading.classList.add("hidden");
+          }, 500);
+        }
+      }
+
+      // ==========================================
+      // 4. 摄像头实时监控逻辑
+      // ==========================================
+      let webcamStream = null;
+      let detectionInterval = null;
+
+      async function startWebcam() {
+        try {
+          // 眼睛变成爱心
+          makeEyesHearts();
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+          });
+          webcamStream = stream;
+
+          const videoPlayer = document.getElementById("webcam-raw");
+          videoPlayer.srcObject = stream;
+          videoPlayer.classList.remove("hidden");
+          document.getElementById("cam-placeholder").classList.add("hidden");
+
+          // 开始检测循环
+          detectionInterval = setInterval(detectWebcamFrame, 500);
+
+          document.getElementById("btn-start-cam").classList.add("hidden");
+          document.getElementById("btn-stop-cam").classList.remove("hidden");
+        } catch (error) {
+          console.error("开启摄像头失败:", error);
+          alert("无法访问摄像头: " + error.message);
+        }
+      }
+
+      function stopWebcam() {
+        if (webcamStream) {
+          webcamStream.getTracks().forEach((track) => track.stop());
+          webcamStream = null;
+        }
+
+        if (detectionInterval) {
+          clearInterval(detectionInterval);
+          detectionInterval = null;
+        }
+
+        document.getElementById("webcam-raw").classList.add("hidden");
+        document.getElementById("webcam-result").classList.add("hidden");
+        document.getElementById("cam-placeholder").classList.remove("hidden");
+
+        document.getElementById("btn-start-cam").classList.remove("hidden");
+        document.getElementById("btn-stop-cam").classList.add("hidden");
+
         // 恢复眼睛
-        function resetEyes() {
-            const pupils = document.querySelectorAll('.pupil');
-            pupils.forEach(pupil => {
-                pupil.style.background = '#333';
-                pupil.style.boxShadow = 'none';
-                pupil.style.width = '15px';
-                pupil.style.height = '15px';
-                pupil.style.clipPath = 'none';
-                pupil.style.backgroundColor = '#333';
-            });
-        }
-        
-        // 让眼睛变成爱心
-        function makeEyesHearts() {
-            const pupils = document.querySelectorAll('.pupil');
-            pupils.forEach(pupil => {
-                pupil.style.background = 'transparent';
-                pupil.style.boxShadow = 'none';
-                pupil.style.width = '20px';
-                pupil.style.height = '20px';
-                pupil.style.transform = 'scale(1)';
-                
-                // 创建爱心形状
-                pupil.style.clipPath = 'polygon(50% 100%, 0 0, 100% 0)';
-                pupil.style.backgroundColor = '#ef4444';
-            });
-        }
+        resetEyes();
+      }
 
-        async function detectImage() {
-            if (!selectedImageFile) return;
+      async function detectWebcamFrame() {
+        const rawVideo = document.getElementById("webcam-raw");
+        const resultImage = document.getElementById("webcam-result");
+        const placeholder = document.getElementById("cam-placeholder");
 
-            const loading = document.getElementById('img-loading');
-            const resultPlaceholder = document.getElementById('img-result-placeholder');
-            const resultContainer = document.getElementById('img-result-container');
-            
-            console.log("检测开始 - 容器状态:", resultContainer.classList.contains('hidden'));
-            
-            loading.classList.remove('hidden');
+        if (!rawVideo || rawVideo.readyState < 2) return;
+
+        const canvas = document.getElementById("hidden-canvas");
+        canvas.width = rawVideo.videoWidth;
+        canvas.height = rawVideo.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(
+          async (blob) => {
+            if (!blob) return;
 
             const formData = new FormData();
-            formData.append('file', selectedImageFile);
+            formData.append("file", blob, "frame.jpg");
+            formData.append("model_name", document.getElementById("model-select").value);
 
             try {
-                // 向后端发送请求
-                const response = await fetch(API_URL_IMAGE, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`服务器错误: ${response.status}`);
-                }
-                
-                // 后端返回 JSON (包含 base64 图片)
-                const data = await response.json();
-                
-                console.log("检测响应数据:", data);
-                
-                // 检查数据格式
-                if (!data.image) {
-                    throw new Error("后端未返回检测结果图片");
-                }
-                
-                // 显示检测结果
-                console.log("准备显示结果 - 容器状态:", resultContainer.classList.contains('hidden'));
-                resultContainer.classList.remove('hidden');
-                console.log("移除 hidden 后 - 容器状态:", resultContainer.classList.contains('hidden'));
-                
-                // 移除图片元素的 hidden 类
-                const imgResult = document.getElementById('image-result');
-                imgResult.classList.remove('hidden');
-                
-                document.getElementById('image-result').src = data.image;
-                resultPlaceholder.classList.add('hidden');
-                
-                console.log("检测结果已显示");
+              const response = await fetch(API_URL_FRAME, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!response.ok) return;
+
+              const data = await response.json();
+
+              if (data.image) {
+                resultImage.src = data.image;
+                resultImage.classList.remove("hidden");
+                placeholder.classList.add("hidden");
+              }
             } catch (error) {
-                console.error("图片检测失败:", error);
-                alert("检测失败: " + error.message);
-            } finally {
-                setTimeout(() => {
-                    loading.classList.add('hidden');
-                }, 500);
+              console.error("摄像头检测失败:", error);
             }
-        }
-
-        // ==========================================
-        // 3. 视频检测逻辑
-        // ==========================================
-        let selectedVideoFile = null;
-
-        function handleVideoSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            selectedVideoFile = file;
-
-            document.getElementById('video-filename').innerText = "已选择文件: " + file.name;
-            document.getElementById('video-filename').classList.remove('hidden');
-
-            // 预览原视频
-            const videoPlayer = document.getElementById('video-player');
-            videoPlayer.src = URL.createObjectURL(file);
-            videoPlayer.classList.remove('hidden');
-            document.getElementById('vid-placeholder').classList.add('hidden');
-
-            const btn = document.getElementById('btn-detect-vid');
-            btn.disabled = false;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-
-        async function detectVideo() {
-            if (!selectedVideoFile) return;
-
-            const loading = document.getElementById('vid-loading');
-            const progress = document.getElementById('vid-progress');
-            const status = document.getElementById('vid-status');
-            const placeholder = document.getElementById('vid-placeholder');
-            
-            loading.classList.remove('hidden');
-            status.innerText = "正在上传视频...";
-
-            const formData = new FormData();
-            formData.append('file', selectedVideoFile);
-
-            try {
-                status.innerText = "正在上传视频...";
-                
-                const response = await fetch(API_URL_VIDEO, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`服务器错误: ${response.status}`);
-                }
-                
-                status.innerText = "正在处理视频...";
-                
-                const data = await response.json();
-                
-                if (!data.video) {
-                    throw new Error("后端未返回处理后的视频");
-                }
-                
-                const videoPlayer = document.getElementById('video-player');
-                videoPlayer.src = data.video;
-                videoPlayer.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-                
-                status.innerText = "视频处理完成!";
-            } catch (error) {
-                console.error("视频检测失败:", error);
-                alert("检测失败: " + error.message);
-            } finally {
-                setTimeout(() => {
-                    loading.classList.add('hidden');
-                }, 500);
-            }
-        }
-
-        // ==========================================
-        // 4. 摄像头实时监控逻辑
-        // ==========================================
-        let webcamStream = null;
-        let detectionInterval = null;
-
-        async function startWebcam() {
-            try {
-                // 眼睛变成爱心
-                makeEyesHearts();
-                
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 640, height: 480 } 
-                });
-                webcamStream = stream;
-                
-                const videoPlayer = document.getElementById('webcam-raw');
-                videoPlayer.srcObject = stream;
-                videoPlayer.classList.remove('hidden');
-                document.getElementById('cam-placeholder').classList.add('hidden');
-                
-                // 开始检测循环
-                detectionInterval = setInterval(detectWebcamFrame, 500);
-                
-                document.getElementById('btn-start-cam').classList.add('hidden');
-                document.getElementById('btn-stop-cam').classList.remove('hidden');
-            } catch (error) {
-                console.error("开启摄像头失败:", error);
-                alert("无法访问摄像头: " + error.message);
-            }
-        }
-
-        function stopWebcam() {
-            if (webcamStream) {
-                webcamStream.getTracks().forEach(track => track.stop());
-                webcamStream = null;
-            }
-            
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-                detectionInterval = null;
-            }
-            
-            document.getElementById('webcam-raw').classList.add('hidden');
-            document.getElementById('webcam-result').classList.add('hidden');
-            document.getElementById('cam-placeholder').classList.remove('hidden');
-            
-            document.getElementById('btn-start-cam').classList.remove('hidden');
-            document.getElementById('btn-stop-cam').classList.add('hidden');
-            
-            // 恢复眼睛
-            resetEyes();
-        }
-
-        async function detectWebcamFrame() {
-            const rawVideo = document.getElementById('webcam-raw');
-            const resultImage = document.getElementById('webcam-result');
-            const placeholder = document.getElementById('cam-placeholder');
-            
-            if (!rawVideo || rawVideo.readyState < 2) return;
-            
-            const canvas = document.getElementById('hidden-canvas');
-            canvas.width = rawVideo.videoWidth;
-            canvas.height = rawVideo.videoHeight;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
-            
-            canvas.toBlob(async (blob) => {
-                if (!blob) return;
-                
-                const formData = new FormData();
-                formData.append('file', blob, 'frame.jpg');
-                
-                try {
-                    const response = await fetch(API_URL_FRAME, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (!response.ok) return;
-                    
-                    const data = await response.json();
-                    
-                    if (data.image) {
-                        resultImage.src = data.image;
-                        resultImage.classList.remove('hidden');
-                        placeholder.classList.add('hidden');
-                    }
-                } catch (error) {
-                    console.error("摄像头检测失败:", error);
-                }
-            }, 'image/jpeg', 0.8);
-        }
+          },
+          "image/jpeg",
+          0.8,
+        );
+      }
     </script>
-</body>
+  </body>
 </html>

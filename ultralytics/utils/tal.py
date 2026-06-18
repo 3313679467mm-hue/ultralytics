@@ -37,6 +37,7 @@ class TaskAlignedAssigner(nn.Module):
         stride: list = [8, 16, 32],
         eps: float = 1e-9,
         topk2=None,
+        iou_type: str = "SIoU",
     ):
         """Initialize a TaskAlignedAssigner object with customizable hyperparameters.
 
@@ -48,6 +49,7 @@ class TaskAlignedAssigner(nn.Module):
             stride (list, optional): List of stride values for different feature levels.
             eps (float, optional): A small value to prevent division by zero.
             topk2 (int, optional): Secondary topk value for additional filtering.
+            iou_type (str, optional): Type of IoU to use. Options: 'GIoU', 'DIoU', 'CIoU', 'SIoU'.
         """
         super().__init__()
         self.topk = topk
@@ -58,6 +60,7 @@ class TaskAlignedAssigner(nn.Module):
         self.stride = stride
         self.stride_val = self.stride[1] if len(self.stride) > 1 else self.stride[0]
         self.eps = eps
+        self.iou_type = iou_type
 
     @torch.no_grad()
     def forward(self, pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt):
@@ -212,7 +215,15 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             (torch.Tensor): IoU values between each pair of boxes.
         """
-        return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, CIoU=True).squeeze(-1).clamp_(0)
+        # 根据配置的 IoU 类型计算
+        if self.iou_type == "GIoU":
+            return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, GIoU=True).squeeze(-1).clamp_(0)
+        elif self.iou_type == "DIoU":
+            return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, DIoU=True).squeeze(-1).clamp_(0)
+        elif self.iou_type == "CIoU":
+            return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, CIoU=True).squeeze(-1).clamp_(0)
+        else:  # 默认 SIoU
+            return bbox_iou(gt_bboxes, pd_bboxes, xywh=False, SIoU=True).squeeze(-1).clamp_(0)
 
     def select_topk_candidates(self, metrics, topk_mask=None):
         """Select the top-k candidates based on the given metrics.

@@ -1,7 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-# SimSPPF 模块配置 - 用于测试 SimSPPF 性能
-# 该配置使用 SimSPPF 替换原有的 SPPF 模块
+# SimSPPF + C2f_SE 模块配置 - 消融实验3
+# 该配置使用 SimSPPF 替换 SPPF，并在最后一层使用 C2fSE
 
 # Parameters
 nc: 1 # number of classes (手机检测)
@@ -26,7 +26,7 @@ backbone:
   - [-1, 3, C2f, [1024, True]]
   - [-1, 1, SimSPPF, [1024, 5]] # 9 - 使用 SimSPPF 替换 SPPF [c2, k]
 
-# YOLOv8 head
+# YOLOv8 head with C2fSE
 head:
   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
   - [[-1, 6], 1, Concat, [1]] # cat backbone P4
@@ -42,6 +42,6 @@ head:
 
   - [-1, 1, Conv, [512, 3, 2]]
   - [[-1, 9], 1, Concat, [1]] # cat head P5
-  - [-1, 3, C2f, [1024]] # 21 (P5/32-large)
+  - [-1, 3, C2fSE, [1024]] # 21 (P5/32-large) - 使用 C2fSE
 
   - [[15, 18, 21], 1, Detect, [nc]] # Detect(P3, P4, P5)
