@@ -1,5 +1,5 @@
 """
-手机本地监控 - YOLOv8实时目标检测
+手机本地监控 - YOLOv8实时目标检测.
 
 功能:
 - 调用手机摄像头进行实时视频采集
@@ -11,23 +11,25 @@ Pydroid 3 依赖安装:
     pip install opencv-python numpy requests ultralytics pillow
 """
 
+from __future__ import annotations
+
 import base64
 import json
 import sqlite3
 import time
-from typing import List
+import tkinter as tk
 
 import cv2
 import numpy as np
 import requests
-import tkinter as tk
-from PIL import Image, ImageTk
 import torch
 import torch.nn as nn
+from PIL import Image, ImageTk
 
 # ============================================================
 # 自定义模块定义 (必须与 ultralytics 包中完全一致)
 # ============================================================
+
 
 class LightConv(nn.Module):
     """Light convolution module with 1x1 and depthwise convolutions."""
@@ -35,6 +37,7 @@ class LightConv(nn.Module):
     def __init__(self, c1, c2, k=1, act=nn.ReLU()):
         super().__init__()
         from ultralytics.nn.modules.conv import Conv, DWConv
+
         self.conv1 = Conv(c1, c2, 1, act=False)
         self.conv2 = DWConv(c2, c2, k, act=act)
 
@@ -48,6 +51,7 @@ class SimSPPF(nn.Module):
     def __init__(self, c1, c2, k=5, n=3, shortcut=True):
         super().__init__()
         from ultralytics.nn.modules.conv import Conv
+
         c_ = c1 // 2
         self.cv1 = Conv(c1, c_, 1, 1, act=False)
         self.cv2 = Conv(c_ * (n + 1), c2, 1, 1)
@@ -68,6 +72,7 @@ class C2fLightConv(nn.Module):
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__()
         from ultralytics.nn.modules.conv import Conv, LightConv
+
         self.c = int(c2 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)
@@ -85,6 +90,7 @@ class CBAM(nn.Module):
     def __init__(self, c1, r=16):
         super().__init__()
         from ultralytics.nn.modules.conv import Conv
+
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
@@ -112,8 +118,9 @@ class C2fCBAM(nn.Module):
 
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__()
-        from ultralytics.nn.modules.conv import Conv
         from ultralytics.nn.modules.block import Bottleneck
+        from ultralytics.nn.modules.conv import Conv
+
         self.c = max(int(c2 * e), 1)
         c2 = max(c2, 1)
         nn.Module.__init__(self)
@@ -130,38 +137,38 @@ class C2fCBAM(nn.Module):
 
 # 注册自定义模块到ultralytics (必须在导入YOLO之前)
 import sys
+
 # 确保 ultralytics 模块已加载
 import ultralytics.nn.modules.block as _block
 import ultralytics.nn.tasks as _tasks
 
 # 将自定义类注入到 ultralytics 的 block 和 tasks 模块中
-setattr(_block, 'C2fLightConv', C2fLightConv)
-setattr(_block, 'SimSPPF', SimSPPF)
-setattr(_block, 'C2fCBAM', C2fCBAM)
-setattr(_block, 'LightConv', LightConv)
-setattr(_block, 'CBAM', CBAM)
+setattr(_block, "C2fLightConv", C2fLightConv)
+setattr(_block, "SimSPPF", SimSPPF)
+setattr(_block, "C2fCBAM", C2fCBAM)
+setattr(_block, "LightConv", LightConv)
+setattr(_block, "CBAM", CBAM)
 
-setattr(_tasks, 'C2fLightConv', C2fLightConv)
-setattr(_tasks, 'SimSPPF', SimSPPF)
-setattr(_tasks, 'C2fCBAM', C2fCBAM)
-setattr(_tasks, 'LightConv', LightConv)
-setattr(_tasks, 'CBAM', CBAM)
+setattr(_tasks, "C2fLightConv", C2fLightConv)
+setattr(_tasks, "SimSPPF", SimSPPF)
+setattr(_tasks, "C2fCBAM", C2fCBAM)
+setattr(_tasks, "LightConv", LightConv)
+setattr(_tasks, "CBAM", CBAM)
 
 # 同时注入到 sys.modules 中，确保 pickle 能找到
-sys.modules['ultralytics.nn.modules.block'].C2fLightConv = C2fLightConv
-sys.modules['ultralytics.nn.modules.block'].SimSPPF = SimSPPF
-sys.modules['ultralytics.nn.modules.block'].C2fCBAM = C2fCBAM
-sys.modules['ultralytics.nn.modules.block'].LightConv = LightConv
-sys.modules['ultralytics.nn.modules.block'].CBAM = CBAM
+sys.modules["ultralytics.nn.modules.block"].C2fLightConv = C2fLightConv
+sys.modules["ultralytics.nn.modules.block"].SimSPPF = SimSPPF
+sys.modules["ultralytics.nn.modules.block"].C2fCBAM = C2fCBAM
+sys.modules["ultralytics.nn.modules.block"].LightConv = LightConv
+sys.modules["ultralytics.nn.modules.block"].CBAM = CBAM
 
-sys.modules['ultralytics.nn.tasks'].C2fLightConv = C2fLightConv
-sys.modules['ultralytics.nn.tasks'].SimSPPF = SimSPPF
-sys.modules['ultralytics.nn.tasks'].C2fCBAM = C2fCBAM
-sys.modules['ultralytics.nn.tasks'].LightConv = LightConv
-sys.modules['ultralytics.nn.tasks'].CBAM = CBAM
+sys.modules["ultralytics.nn.tasks"].C2fLightConv = C2fLightConv
+sys.modules["ultralytics.nn.tasks"].SimSPPF = SimSPPF
+sys.modules["ultralytics.nn.tasks"].C2fCBAM = C2fCBAM
+sys.modules["ultralytics.nn.tasks"].LightConv = LightConv
+sys.modules["ultralytics.nn.tasks"].CBAM = CBAM
 
 from ultralytics import YOLO
-
 
 # ============================================================
 # 配置参数
@@ -195,12 +202,12 @@ MODEL_IMGSZ = 640
 # YOLODetector - YOLO推理引擎
 # ============================================================
 
+
 class YOLODetector:
-    """YOLOv8推理引擎"""
+    """YOLOv8推理引擎."""
 
     def __init__(self, model_path: str, conf_threshold: float = 0.4, iou_threshold: float = 0.45, imgsz: int = 320):
-        """
-        初始化检测器
+        """初始化检测器.
 
         Args:
             model_path: 模型文件路径 (.pt)
@@ -220,9 +227,8 @@ class YOLODetector:
         self.class_names = self.model.names
         print(f"模型类别: {self.class_names}")
 
-    def detect(self, frame: np.ndarray) -> List[dict]:
-        """
-        对单帧图像进行目标检测
+    def detect(self, frame: np.ndarray) -> list[dict]:
+        """对单帧图像进行目标检测.
 
         Args:
             frame: 输入图像 (numpy array, BGR格式)
@@ -246,12 +252,14 @@ class YOLODetector:
                 confidence = float(box.conf[0].cpu().numpy())
                 class_id = int(box.cls[0].cpu().numpy())
 
-                detections.append({
-                    "class_id": class_id,
-                    "class_name": self.class_names.get(class_id, f"class_{class_id}"),
-                    "confidence": confidence,
-                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                })
+                detections.append(
+                    {
+                        "class_id": class_id,
+                        "class_name": self.class_names.get(class_id, f"class_{class_id}"),
+                        "confidence": confidence,
+                        "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                    }
+                )
 
         return detections
 
@@ -260,10 +268,17 @@ class YOLODetector:
 # AlertManager - 告警管理器
 # ============================================================
 
-class AlertManager:
-    """告警管理器 - 连续帧检测与告警上传 + 本地SQLite存储"""
 
-    def __init__(self, threshold: int = 3, server_url: str = "http://127.0.0.1:8001", class_names: dict = None, db_path: str = "alerts.db"):
+class AlertManager:
+    """告警管理器 - 连续帧检测与告警上传 + 本地SQLite存储."""
+
+    def __init__(
+        self,
+        threshold: int = 3,
+        server_url: str = "http://127.0.0.1:8001",
+        class_names: dict | None = None,
+        db_path: str = "alerts.db",
+    ):
         self.threshold = threshold
         self.server_url = server_url
         self.consecutive_count = 0
@@ -279,14 +294,14 @@ class AlertManager:
                 break
         # 如果没有找到phone类，使用第一个类别
         if self.target_name is None and self.class_names:
-            self.target_name = list(self.class_names.values())[0]
+            self.target_name = next(iter(self.class_names.values()))
         print(f"告警目标类别: {self.target_name}")
 
         # 初始化本地数据库
         self._init_db()
 
     def _init_db(self):
-        """初始化SQLite数据库"""
+        """初始化SQLite数据库."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("""
@@ -305,30 +320,31 @@ class AlertManager:
         print(f"本地数据库已初始化: {self.db_path}")
 
     def _save_alert_local(self, alert_data: dict):
-        """将告警数据保存到本地SQLite数据库"""
+        """将告警数据保存到本地SQLite数据库."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO alerts (timestamp, image_base64, detections, consecutive_frames, alert_type)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                alert_data["timestamp"],
-                alert_data["image_base64"],
-                json.dumps(alert_data["detections"], ensure_ascii=False),
-                alert_data["consecutive_frames"],
-                alert_data["alert_type"],
-            ))
+            """,
+                (
+                    alert_data["timestamp"],
+                    alert_data["image_base64"],
+                    json.dumps(alert_data["detections"], ensure_ascii=False),
+                    alert_data["consecutive_frames"],
+                    alert_data["alert_type"],
+                ),
+            )
             conn.commit()
             conn.close()
             print(f"[本地存储] 告警已保存，ID: {cursor.lastrowid}")
         except Exception as e:
             print(f"[本地存储] 保存失败: {e}")
 
-    def check_and_alert(self, detections: List[dict], frame: np.ndarray) -> bool:
-        """
-        检查检测结果，满足条件时发送告警
-        判断逻辑: 检测到目标类别(手机)视为玩手机行为
+    def check_and_alert(self, detections: list[dict], frame: np.ndarray) -> bool:
+        """检查检测结果，满足条件时发送告警 判断逻辑: 检测到目标类别(手机)视为玩手机行为.
         """
         has_target = any(d["class_name"] == self.target_name for d in detections) if self.target_name else False
 
@@ -347,8 +363,8 @@ class AlertManager:
 
         return False
 
-    def _send_alert(self, detections: List[dict], frame: np.ndarray):
-        """发送告警到服务器并保存到本地数据库"""
+    def _send_alert(self, detections: list[dict], frame: np.ndarray):
+        """发送告警到服务器并保存到本地数据库."""
         try:
             _, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             image_base64 = base64.b64encode(encoded).decode("utf-8")
@@ -386,9 +402,9 @@ class AlertManager:
 # 主函数
 # ============================================================
 
-def main():
-    """主函数 - 摄像头采集 + 本地推理 + 告警上传"""
 
+def main():
+    """主函数 - 摄像头采集 + 本地推理 + 告警上传."""
     print("=" * 50)
     print("手机本地监控系统启动")
     print("=" * 50)
@@ -464,18 +480,23 @@ def main():
             x1, y1, x2, y2 = det["bbox"]
             lbl = f"{det['class_name']} {det['confidence']:.2f}"
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, lbl, (x1, y1 - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, lbl, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # 连续帧计数
-        cv2.putText(frame, f"Consecutive: {alert_manager.consecutive_count}/{CONSECUTIVE_FRAMES_THRESHOLD}",
-                   (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(
+            frame,
+            f"Consecutive: {alert_manager.consecutive_count}/{CONSECUTIVE_FRAMES_THRESHOLD}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 0, 255),
+            2,
+        )
 
         # 告警判断
         alert_triggered = alert_manager.check_and_alert(detections, frame)
         if alert_triggered:
-            cv2.putText(frame, "ALERT!", (10, 60),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+            cv2.putText(frame, "ALERT!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
 
         # FPS统计 - 显示在画面上
         if frame_count % 30 == 0:
@@ -485,8 +506,7 @@ def main():
         else:
             fps_text = f"FPS: {fps:.1f} | Det: {len(detections)} | {', '.join(d['class_name'] for d in detections)}"
 
-        cv2.putText(frame, fps_text, (10, frame.shape[0] - 15),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        cv2.putText(frame, fps_text, (10, frame.shape[0] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
         # 转换格式适配Tkinter
         rgb_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

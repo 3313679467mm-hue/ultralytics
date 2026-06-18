@@ -1,5 +1,5 @@
 """
-电脑本地监控 - YOLOv8实时目标检测
+电脑本地监控 - YOLOv8实时目标检测.
 
 功能:
 - 调用电脑摄像头进行实时视频采集
@@ -11,17 +11,18 @@
     pip install opencv-python numpy requests ultralytics pillow
 """
 
+from __future__ import annotations
+
 import base64
 import time
-from typing import List
+import tkinter as tk
 
 import cv2
 import numpy as np
 import requests
-import tkinter as tk
 from PIL import Image, ImageTk
-from ultralytics import YOLO
 
+from ultralytics import YOLO
 
 # ============================================================
 # 配置参数
@@ -55,12 +56,12 @@ MODEL_IMGSZ = 640
 # YOLODetector - YOLO推理引擎
 # ============================================================
 
+
 class YOLODetector:
-    """YOLOv8推理引擎"""
+    """YOLOv8推理引擎."""
 
     def __init__(self, model_path: str, conf_threshold: float = 0.25, iou_threshold: float = 0.45, imgsz: int = 640):
-        """
-        初始化检测器
+        """初始化检测器.
 
         Args:
             model_path: 模型文件路径 (.pt)
@@ -80,9 +81,8 @@ class YOLODetector:
         self.class_names = self.model.names
         print(f"模型类别: {self.class_names}")
 
-    def detect(self, frame: np.ndarray) -> List[dict]:
-        """
-        对单帧图像进行目标检测
+    def detect(self, frame: np.ndarray) -> list[dict]:
+        """对单帧图像进行目标检测.
 
         Args:
             frame: 输入图像 (numpy array, BGR格式)
@@ -106,12 +106,14 @@ class YOLODetector:
                 confidence = float(box.conf[0].cpu().numpy())
                 class_id = int(box.cls[0].cpu().numpy())
 
-                detections.append({
-                    "class_id": class_id,
-                    "class_name": self.class_names.get(class_id, f"class_{class_id}"),
-                    "confidence": confidence,
-                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                })
+                detections.append(
+                    {
+                        "class_id": class_id,
+                        "class_name": self.class_names.get(class_id, f"class_{class_id}"),
+                        "confidence": confidence,
+                        "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                    }
+                )
 
         return detections
 
@@ -120,10 +122,11 @@ class YOLODetector:
 # AlertManager - 告警管理器
 # ============================================================
 
-class AlertManager:
-    """告警管理器 - 连续帧检测与告警上传"""
 
-    def __init__(self, threshold: int = 3, server_url: str = "http://127.0.0.1:8001", class_names: dict = None):
+class AlertManager:
+    """告警管理器 - 连续帧检测与告警上传."""
+
+    def __init__(self, threshold: int = 3, server_url: str = "http://127.0.0.1:8001", class_names: dict | None = None):
         self.threshold = threshold
         self.server_url = server_url
         self.consecutive_count = 0
@@ -138,13 +141,11 @@ class AlertManager:
                 break
         # 如果没有找到phone类，使用第一个类别
         if self.target_name is None and self.class_names:
-            self.target_name = list(self.class_names.values())[0]
+            self.target_name = next(iter(self.class_names.values()))
         print(f"告警目标类别: {self.target_name}")
 
-    def check_and_alert(self, detections: List[dict], frame: np.ndarray) -> bool:
-        """
-        检查检测结果，满足条件时发送告警
-        判断逻辑: 检测到目标类别(手机)视为玩手机行为
+    def check_and_alert(self, detections: list[dict], frame: np.ndarray) -> bool:
+        """检查检测结果，满足条件时发送告警 判断逻辑: 检测到目标类别(手机)视为玩手机行为.
         """
         has_target = any(d["class_name"] == self.target_name for d in detections) if self.target_name else False
 
@@ -163,8 +164,8 @@ class AlertManager:
 
         return False
 
-    def _send_alert(self, detections: List[dict], frame: np.ndarray):
-        """发送告警到服务器"""
+    def _send_alert(self, detections: list[dict], frame: np.ndarray):
+        """发送告警到服务器."""
         try:
             _, encoded = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             image_base64 = base64.b64encode(encoded).decode("utf-8")
@@ -198,9 +199,9 @@ class AlertManager:
 # 主函数
 # ============================================================
 
-def main():
-    """主函数 - 摄像头采集 + 本地推理 + 告警上传"""
 
+def main():
+    """主函数 - 摄像头采集 + 本地推理 + 告警上传."""
     print("=" * 50)
     print("电脑本地监控系统启动")
     print("=" * 50)
@@ -276,18 +277,23 @@ def main():
             x1, y1, x2, y2 = det["bbox"]
             lbl = f"{det['class_name']} {det['confidence']:.2f}"
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, lbl, (x1, y1 - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, lbl, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # 连续帧计数
-        cv2.putText(frame, f"Consecutive: {alert_manager.consecutive_count}/{CONSECUTIVE_FRAMES_THRESHOLD}",
-                   (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(
+            frame,
+            f"Consecutive: {alert_manager.consecutive_count}/{CONSECUTIVE_FRAMES_THRESHOLD}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 0, 255),
+            2,
+        )
 
         # 告警判断
         alert_triggered = alert_manager.check_and_alert(detections, frame)
         if alert_triggered:
-            cv2.putText(frame, "ALERT!", (10, 60),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+            cv2.putText(frame, "ALERT!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
 
         # FPS统计 - 显示在画面上
         if frame_count % 30 == 0:
@@ -295,8 +301,7 @@ def main():
             fps = frame_count / elapsed
         fps_text = f"FPS: {fps:.1f} | Det: {len(detections)} | {', '.join(d['class_name'] for d in detections)}"
 
-        cv2.putText(frame, fps_text, (10, frame.shape[0] - 15),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        cv2.putText(frame, fps_text, (10, frame.shape[0] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
         # 转换格式适配Tkinter
         rgb_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

@@ -1,21 +1,22 @@
 """
 告警管理服务 - FastAPI后端
-接收手机端告警，存储到SQLite，提供网页可视化
+接收手机端告警，存储到SQLite，提供网页可视化.
 
 端口: 8001
 """
+
+from __future__ import annotations
 
 import base64
 import os
 import sqlite3
 import time
 from datetime import datetime
-from typing import List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="告警管理服务")
@@ -38,6 +39,7 @@ os.makedirs(IMAGE_DIR, exist_ok=True)
 # 数据模型
 # ============================================================
 
+
 class AlertRequest(BaseModel):
     timestamp: str
     image_base64: str
@@ -59,8 +61,9 @@ class AlertResponse(BaseModel):
 # 数据库操作
 # ============================================================
 
+
 def init_db():
-    """初始化SQLite数据库"""
+    """初始化SQLite数据库."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -79,7 +82,7 @@ def init_db():
 
 
 def save_alert(data: AlertRequest) -> int:
-    """保存告警记录"""
+    """保存告警记录."""
     # 保存图像
     image_data = base64.b64decode(data.image_base64)
     filename = f"alert_{int(time.time())}_{len(os.listdir(IMAGE_DIR))}.jpg"
@@ -100,8 +103,8 @@ def save_alert(data: AlertRequest) -> int:
     return alert_id
 
 
-def get_alerts(limit: int = 20, offset: int = 0, date_filter: Optional[str] = None) -> tuple:
-    """获取告警列表"""
+def get_alerts(limit: int = 20, offset: int = 0, date_filter: str | None = None) -> tuple:
+    """获取告警列表."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -123,8 +126,8 @@ def get_alerts(limit: int = 20, offset: int = 0, date_filter: Optional[str] = No
     return alerts, total
 
 
-def get_alert_by_id(alert_id: int) -> Optional[dict]:
-    """获取单条告警"""
+def get_alert_by_id(alert_id: int) -> dict | None:
+    """获取单条告警."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -135,7 +138,7 @@ def get_alert_by_id(alert_id: int) -> Optional[dict]:
 
 
 def delete_alert(alert_id: int) -> bool:
-    """删除告警记录及图片"""
+    """删除告警记录及图片."""
     alert = get_alert_by_id(alert_id)
     if not alert:
         return False
@@ -154,7 +157,7 @@ def delete_alert(alert_id: int) -> bool:
 
 
 def get_stats() -> dict:
-    """获取统计信息"""
+    """获取统计信息."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -184,6 +187,7 @@ def get_stats() -> dict:
 # API 路由
 # ============================================================
 
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -191,27 +195,27 @@ def startup():
 
 @app.get("/")
 async def root():
-    """返回告警可视化页面"""
+    """返回告警可视化页面."""
     return FileResponse("alerts_viewer.html")
 
 
 @app.post("/api/alert")
 async def receive_alert(data: AlertRequest):
-    """接收手机端告警"""
+    """接收手机端告警."""
     alert_id = save_alert(data)
     return {"status": "success", "alert_id": alert_id}
 
 
 @app.get("/api/alerts")
-async def list_alerts(limit: int = 20, offset: int = 0, date: Optional[str] = None):
-    """获取告警列表"""
+async def list_alerts(limit: int = 20, offset: int = 0, date: str | None = None):
+    """获取告警列表."""
     alerts, total = get_alerts(limit, offset, date)
     return {"alerts": alerts, "total": total}
 
 
 @app.get("/api/alerts/{alert_id}")
 async def get_alert(alert_id: int):
-    """获取单条告警"""
+    """获取单条告警."""
     alert = get_alert_by_id(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="告警记录不存在")
@@ -220,7 +224,7 @@ async def get_alert(alert_id: int):
 
 @app.get("/api/alerts/image/{alert_id}")
 async def get_alert_image(alert_id: int):
-    """获取告警图片"""
+    """获取告警图片."""
     alert = get_alert_by_id(alert_id)
     if not alert or not os.path.exists(alert["image_path"]):
         raise HTTPException(status_code=404, detail="图片不存在")
@@ -229,7 +233,7 @@ async def get_alert_image(alert_id: int):
 
 @app.delete("/api/alerts/{alert_id}")
 async def remove_alert(alert_id: int):
-    """删除告警"""
+    """删除告警."""
     if delete_alert(alert_id):
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="告警记录不存在")
@@ -237,7 +241,7 @@ async def remove_alert(alert_id: int):
 
 @app.get("/api/alerts/stats")
 async def stats():
-    """获取统计信息"""
+    """获取统计信息."""
     return get_stats()
 
 

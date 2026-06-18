@@ -1,7 +1,6 @@
 import base64
 import os
 import tempfile
-from typing import List
 
 import cv2
 import numpy as np
@@ -41,20 +40,20 @@ async def root():
 MODELS = {
     "baseline": {
         "path": "examples/phone_detection/runs/detect/examples/phone_detection/runs/phone_detection_ciou/weights/best.pt",
-        "name": "经典基线 YOLOv8n (CIoU)"
+        "name": "经典基线 YOLOv8n (CIoU)",
     },
     "siou": {
         "path": "examples/phone_detection/runs/detect/examples/phone_detection/runs/phone_detection_siou2/weights/best.pt",
-        "name": "SIoU 模型"
+        "name": "SIoU 模型",
     },
     "lightconv": {
         "path": "examples/phone_detection/runs/detect/examples/phone_detection/runs/phone_detection_lightconv/weights/best.pt",
-        "name": "LightConv 轻量化模型"
+        "name": "LightConv 轻量化模型",
     },
     "champion": {
         "path": "examples/phone_detection/runs/detect/train2/weights/best.pt",
-        "name": "冠军模型 (SimSPPF+SIoU+C2fCBAM+C2fLightConv)"
-    }
+        "name": "冠军模型 (SimSPPF+SIoU+C2fCBAM+C2fLightConv)",
+    },
 }
 
 CONF_THRESHOLD = 0.25
@@ -76,7 +75,7 @@ print("所有模型加载完成!")
 class DetectionResult(BaseModel):
     class_name: str
     confidence: float
-    bounding_box: List[float]
+    bounding_box: list[float]
 
 
 @app.get("/models")
@@ -280,7 +279,7 @@ async def compare_models(file: UploadFile = File(...)):
             if model_cache[name] is None:
                 print(f"延迟加载模型: {config['name']}")
                 model_cache[name] = YOLO(config["path"])
-            
+
             model = model_cache[name]
             # 进行检测
             pred_results = model.predict(source=img, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD, show=False, save=False)
@@ -290,10 +289,7 @@ async def compare_models(file: UploadFile = File(...)):
             # 编码为 JPEG
             _, encoded_img = cv2.imencode(".jpg", annotated_frame)
             base64_img = base64.b64encode(encoded_img).decode("utf-8")
-            results[name] = {
-                "name": config["name"],
-                "image": f"data:image/jpeg;base64,{base64_img}"
-            }
+            results[name] = {"name": config["name"], "image": f"data:image/jpeg;base64,{base64_img}"}
 
         return results
 
