@@ -1,12 +1,13 @@
 import os
+
 from ultralytics import YOLO
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     script_dir = os.path.dirname(__file__)
-    weights_dir = os.path.join(script_dir, '..', '..', 'weights')
-    model_path = os.path.join(weights_dir, 'best_modified.pt')
-    data_path = os.path.join(script_dir, '..', '..', 'datasets', 'phone_detection', 'data.yaml')
-    
+    weights_dir = os.path.join(script_dir, "..", "..", "weights")
+    model_path = os.path.join(weights_dir, "best_modified.pt")
+    data_path = os.path.join(script_dir, "..", "..", "datasets", "phone_detection", "data.yaml")
+
     model = YOLO(model_path)
     results = model.train(
         data=data_path,
@@ -14,7 +15,7 @@ if __name__ == '__main__':
         imgsz=640,
         device=0,
         batch=4,
-        name='phone_detection5',
+        name="phone_detection5",
         hsv_h=0.025,
         hsv_s=0.8,
         hsv_v=0.5,
@@ -28,6 +29,6 @@ if __name__ == '__main__':
         cls=0.3,
         dfl=1.5,
         dropout=0.0,
-        resume=False
+        resume=False,
     )
-    print('训练完成!')
+    print("训练完成!")
