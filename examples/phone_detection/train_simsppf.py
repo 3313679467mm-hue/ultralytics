@@ -3,22 +3,22 @@ import sys
 
 # 添加项目根目录到 Python 路径，使用本地 ultralytics 代码
 script_dir = os.path.dirname(__file__)
-project_root = os.path.join(script_dir, '..', '..')
+project_root = os.path.join(script_dir, "..", "..")
 sys.path.insert(0, project_root)
 
 from ultralytics import YOLO
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 获取脚本所在目录
     script_dir = os.path.dirname(__file__)
-    data_path = os.path.join(script_dir, '..', '..', 'datasets', 'phone_detection', 'data.yaml')
-    
+    data_path = os.path.join(script_dir, "..", "..", "datasets", "phone_detection", "data.yaml")
+
     # SimSPPF 配置文件路径
-    model_yaml_path = os.path.join(script_dir, '..', '..', 'ultralytics', 'cfg', 'models', 'v8', 'yolov8-simsppf.yaml')
-    
+    model_yaml_path = os.path.join(script_dir, "..", "..", "ultralytics", "cfg", "models", "v8", "yolov8-simsppf.yaml")
+
     # 使用相同的预训练权重（保证公平对比）
-    weights_path = os.path.join(script_dir, '..', '..', 'weights', 'best_modified.pt')
-    
+    weights_path = os.path.join(script_dir, "..", "..", "weights", "best_modified.pt")
+
     print("=" * 60)
     print("SimSPPF 模块测试")
     print("=" * 60)
@@ -26,11 +26,11 @@ if __name__ == '__main__':
     print(f"预训练权重：{weights_path}")
     print(f"数据集：{data_path}")
     print("=" * 60)
-    
+
     # 创建模型并加载权重
     model = YOLO(model_yaml_path)
     model.load(weights_path)
-    
+
     # 开始训练
     print("\n开始训练 SimSPPF 模型...")
     results = model.train(
@@ -42,8 +42,8 @@ if __name__ == '__main__':
         device=0,
         batch=4,
         # 结果保存
-        name='phone_detection_simsppf',
-        project='runs',
+        name="phone_detection_simsppf",
+        project="runs",
         # 数据增强
         hsv_h=0.025,
         hsv_s=0.8,
@@ -64,16 +64,16 @@ if __name__ == '__main__':
         # 低内存配置
         workers=0,
         amp=False,
-        cache=False
+        cache=False,
     )
-    
-    print('\n' + '=' * 60)
-    print('SimSPPF 训练完成!')
-    print('=' * 60)
-    print(f'结果保存在：runs/detect/phone_detection_simsppf/')
-    print('\n对比说明:')
-    print('  - train.py: 使用默认 SPPF')
-    print('  - train_spp.py: 使用自定义 SPP 配置')
-    print('  - train_simsppf.py: 使用 SimSPPF 配置')
-    print('  - 所有训练参数完全一致，确保公平对比')
-    print('=' * 60)
+
+    print("\n" + "=" * 60)
+    print("SimSPPF 训练完成!")
+    print("=" * 60)
+    print("结果保存在：runs/detect/phone_detection_simsppf/")
+    print("\n对比说明:")
+    print("  - train.py: 使用默认 SPPF")
+    print("  - train_spp.py: 使用自定义 SPP 配置")
+    print("  - train_simsppf.py: 使用 SimSPPF 配置")
+    print("  - 所有训练参数完全一致，确保公平对比")
+    print("=" * 60)
